@@ -6,26 +6,29 @@ const assert = require("assert");
   
   try {
     driver = await new Builder().forBrowser(Browser.CHROME).build();
-    await driver.get('https://reeves.tx.publicsearch.us', {timeout: 10000 });
-    let title = await driver.getTitle();
-    await driver.manage().setTimeouts({implicit: 500});
+    //await driver.get('https://reeves.tx.publicsearch.us', {timeout: 10000 });
+    await driver.get('https://reeves.tx.publicsearch.us/doc/31290350', {timeout: 10000 });
+    
+    // ENTRY POINT : TODO - FILTER SET
+    // let title = await driver.getTitle();
+    // await driver.manage().setTimeouts({implicit: 500});
   
-    let submitButton = await driver.findElement(By.css("#main-content form > div.basic-search > button"));
-    await submitButton.click();
-    // wait for the page to load
-    await driver.sleep(1000 + Math.random() * 1000);
+    // let submitButton = await driver.findElement(By.css("#main-content form > div.basic-search > button"));
+    // await submitButton.click();
+    // // wait for the page to load
+    // await driver.sleep(1000 + Math.random() * 1000);
 
-    console.log("waiting for the page to load");
+    // console.log("waiting for the page to load");
     
-    await driver.wait(until.elementLocated(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr")), 10000);
-    console.log("page loaded");
+    // await driver.wait(until.elementLocated(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr")), 10000);
+    // console.log("page loaded");
     
-    let results = await driver.findElements(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr"));
-    console.log("results", results.length);
+    // let results = await driver.findElements(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr"));
+    // console.log("results", results.length);
 
-    await driver.sleep(1000 + Math.random() * 1000);
-    await results[0].click();
-    console.log("clicked into the first result");
+    // await driver.sleep(1000 + Math.random() * 1000);
+    // await results[0].click();
+    // console.log("clicked into the first result");
 
     const firstImageSelector = "#main-content > section > div.css-wnovuq > section > svg > g > image"
     await driver.wait(until.elementLocated(By.css(firstImageSelector)), 10000);
@@ -70,7 +73,6 @@ const assert = require("assert");
       documentMetadataObject[key] = value;
     }
 
-
     const partiesSelector = `[data-testid="docPreviewParty"]`
     await driver.wait(until.elementLocated(By.css(partiesSelector)), 10000);
     const parties = await driver.findElements(By.css(partiesSelector));
@@ -87,6 +89,20 @@ const assert = require("assert");
     let legalDescriptions = await driver.findElement(By.css(legalDescriptionsSelector)).getText();
     legalDescriptions = legalDescriptions.split('\n');
     legalDescriptions.shift();
+
+    const marginalReferencesSelector = `.doc-preview__summary > div:nth-of-type(5) > div > div`
+    await driver.wait(until.elementLocated(By.css(marginalReferencesSelector)), 10000);
+    let marginalReferences = await driver.findElements(By.css(marginalReferencesSelector));
+    const marginalReferenceMap = [];
+    for (const element of marginalReferences) {
+      const link = await element.findElement(By.css('a')).getAttribute('href');
+      const linkLabel = await element.findElement(By.css('a')).getText();
+      const labels = await element.findElements(By.css('span'));
+      const label = await labels[0].getText();
+      const date = await labels[1].getText();
+      marginalReferenceMap.push({link, linkLabel, label, date});
+    }
+
     const targetManifest = {
       storageId,
       basePath,
@@ -96,7 +112,8 @@ const assert = require("assert");
       documentTitle,
       documentMetadata: documentMetadataObject,
       parties: partiesObject,
-      legalDescriptions
+      legalDescriptions,
+      marginalReferences: marginalReferenceMap
     }
 
     console.log("targetManifest", targetManifest);
