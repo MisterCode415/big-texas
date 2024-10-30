@@ -1,0 +1,15 @@
+{
+  "name": "by-hand",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "start": "node index.js",
+    "start:ts": "ts-node index.ts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "selenium-webdriver": "^4.26.0",
+    "mocha": "10.7.3"
+  }
+}
