@@ -43,21 +43,69 @@ const assert = require("assert");
     // storage id
     const numberOfImageSelectors = `[data-testid="docPreviewPageCount"]`
     await driver.wait(until.elementLocated(By.css(numberOfImageSelectors)), 10000);
-    const numberOfImages = await driver.findElement(By.css(numberOfImageSelectors)).getText();
-    console.log("numberOfImages", numberOfImages.replace(/of /g, ''));
+    let numberOfImages = await driver.findElement(By.css(numberOfImageSelectors)).getText();
+    numberOfImages = numberOfImages.replace(/of /g, '');
+    console.log("numberOfImages", numberOfImages);
 
     const firstImage = await driver.findElement(By.css(firstImageSelector));
     const firstImageUrl = await firstImage.getAttribute('xlink:href');
-    console.log("firstImageUrl", firstImageUrl);
 
     const storageId = firstImageUrl.match(/\/(\d+)_1\.png$/)[1];
-    console.log("Storage Number:", storageId);
 
     const basePath = firstImageUrl.replace(/\d+_1\.png$/, '');
-    console.log("basePath", basePath);
 
-    await driver.sleep(1000 + Math.random() * 1000);
+    const documentTitleSelector = `.doc-preview__summary-header > h2`;
+    await driver.wait(until.elementLocated(By.css(documentTitleSelector)), 10000);
+    const documentTitle = await driver.findElement(By.css(documentTitleSelector)).getText();
+    
+    const documentMetadataSelector = `.doc-preview-summary__column-list-item`;
+    await driver.wait(until.elementLocated(By.css(documentMetadataSelector)), 10000);
+    const documentMetadata = await driver.findElements(By.css(documentMetadataSelector));
 
+    const documentMetadataObject = {};
+    for (const element of documentMetadata) {
+      const spans = await element.findElements(By.css('span'));
+      const key = await spans[0].getText();
+      const value = await spans[1].getText();
+      documentMetadataObject[key] = value;
+    }
+
+
+    const partiesSelector = `[data-testid="docPreviewParty"]`
+    await driver.wait(until.elementLocated(By.css(partiesSelector)), 10000);
+    const parties = await driver.findElements(By.css(partiesSelector));
+    const partiesObject = {};
+    const partyBlock = await parties[0].getText();
+    const partyPieces = partyBlock.split('\n');
+    // even index is the party name, odd index is the party role
+    for (let i = 0; i < partyPieces.length; i += 2) {
+      partiesObject[partyPieces[i]] = partyPieces[i + 1];
+    }
+
+    const legalDescriptionsSelector = `.doc-preview__summary > div:nth-of-type(4)`
+    await driver.wait(until.elementLocated(By.css(legalDescriptionsSelector)), 10000);
+    let legalDescriptions = await driver.findElement(By.css(legalDescriptionsSelector)).getText();
+    legalDescriptions = legalDescriptions.split('\n');
+    legalDescriptions.shift();
+    const targetManifest = {
+      storageId,
+      basePath,
+      numberOfImages,
+      documentId,
+      internalId,
+      documentTitle,
+      documentMetadata: documentMetadataObject,
+      parties: partiesObject,
+      legalDescriptions
+    }
+
+    console.log("targetManifest", targetManifest);
+
+    const nextLinkSelector = `#primary > button`
+    await driver.wait(until.elementLocated(By.css(nextLinkSelector[2])), 10000);
+    const nextLink = await driver.findElement(By.css(nextLinkSelector[2])); // follow me until the end of time
+    console.log("nextLink", nextLink);
+    
   } catch (e) {
     console.log(e)
   } finally {
