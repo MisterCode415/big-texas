@@ -1,4 +1,4 @@
-const {By, Builder, Browser, until} = require('selenium-webdriver');
+const { By, Builder, Browser, until } = require('selenium-webdriver');
 const assert = require("assert");
 
 // list page sample:
@@ -10,40 +10,37 @@ const assert = require("assert");
 // &searchOcrText=false
 // &searchType=quickSearch
 
-function extraction() {
 
-}
-
-(async function firstTest() {
+(async function bruteForcePOC() {
   let driver;
   let curPage = 0;
   const pageSize = 10;
   try {
     driver = await new Builder().forBrowser(Browser.CHROME).build();
-    await driver.get('https://reeves.tx.publicsearch.us', {timeout: 10000 });
+    await driver.get('https://reeves.tx.publicsearch.us', { timeout: 10000 });
     //await driver.get('https://reeves.tx.publicsearch.us/doc/31290350', {timeout: 10000 });
-    
+
     // ENTRY POINT : TODO - FILTER SET
     let title = await driver.getTitle();
-    await driver.manage().setTimeouts({implicit: 500});
-  
+    await driver.manage().setTimeouts({ implicit: 500 });
+
     let submitButton = await driver.findElement(By.css("#main-content form > div.basic-search > button"));
     await submitButton.click();
     // wait for the page to load
     await driver.sleep(1000 + Math.random() * 1000);
 
     console.log("waiting for the page to load");
-    
+
     await driver.wait(until.elementLocated(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr")), 10000);
     console.log("page loaded");
-    
+
     let results = await driver.findElements(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr"));
     console.log("results", results.length);
 
     const totalResultsSelector = `[data-testid="resultsSummary"] > span:nth-of-type(1)`;
     await driver.wait(until.elementLocated(By.css(totalResultsSelector)), 10000);
     const totalResults = await driver.findElement(By.css(totalResultsSelector)).getText();
-    const number = totalResults.match(/of ([\d,]+)/)[1].replace(/,/g, '');
+    const number = parseInt(totalResults.split('of')[1].split('results')[0].replace(/,/g, '').trim());
     const pages = Math.ceil(number / pageSize);
     console.log("total results / pages", number, pages);
 
@@ -81,7 +78,7 @@ function extraction() {
     const documentTitleSelector = `.doc-preview__summary-header > h2`;
     await driver.wait(until.elementLocated(By.css(documentTitleSelector)), 10000);
     const documentTitle = await driver.findElement(By.css(documentTitleSelector)).getText();
-    
+
     const documentMetadataSelector = `.doc-preview-summary__column-list-item`;
     await driver.wait(until.elementLocated(By.css(documentMetadataSelector)), 10000);
     const documentMetadata = await driver.findElements(By.css(documentMetadataSelector));
@@ -122,7 +119,7 @@ function extraction() {
       const labels = await element.findElements(By.css('span'));
       const label = await labels[0].getText();
       const date = await labels[1].getText();
-      marginalReferenceMap.push({link, linkLabel, label, date});
+      marginalReferenceMap.push({ link, linkLabel, label, date });
     }
 
     const documentRemarksSelector = `.doc-preview__summary > div:nth-of-type(6)`
@@ -158,7 +155,7 @@ function extraction() {
     //back to main page, when page is exhausted
     //await nextLink[0].click(); 
 
-    await nextLink[2].click(); 
+    await nextLink[2].click();
     // and so on...
   } catch (e) {
     console.log(e)
