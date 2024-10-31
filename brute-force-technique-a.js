@@ -1,6 +1,8 @@
 const { By, Builder, Browser, until } = require('selenium-webdriver');
 const assert = require("assert");
-
+const dotenv = require('dotenv');
+const mongodb = require('mongodb');
+dotenv.config();
 // list page sample:
 // https://reeves.tx.publicsearch.us/results
 // ?department=RP
@@ -15,6 +17,9 @@ const assert = require("assert");
   let driver;
   let curPage = 0;
   const pageSize = 10;
+  const client = await mongodb.connect(process.env.MONGODB_URI);
+  const db = client.db();
+  const collection = db.collection('seed-data');
   try {
     driver = await new Builder().forBrowser(Browser.CHROME).build();
     await driver.get('https://reeves.tx.publicsearch.us', { timeout: 10000 });
@@ -153,13 +158,14 @@ const assert = require("assert");
     await driver.sleep(1000 + Math.random() * 1000);
 
     //back to main page, when page is exhausted
-    //await nextLink[0].click(); 
+    //await nextLink[0].click();
 
-    await nextLink[2].click();
+    // await nextLink[2].click();
     // and so on...
   } catch (e) {
     console.log(e)
   } finally {
-    //await driver.quit();
+    await client.close();
+    await driver.quit();
   }
 }())
