@@ -33,6 +33,13 @@ const assert = require("assert");
       let results = await driver.findElements(By.css("#main-content div.a11y-table > table > tbody > tr"));
       for (element of results) {
         let internalIdRaw = await element.findElement(By.css("td:nth-child(1) input")).getAttribute("id");
+        let grantorRaw = await element.findElement(By.css("td:nth-child(4) span")).getText();
+        let grateeRaw = await element.findElement(By.css("td:nth-child(5) span")).getText();
+        let docType = await element.findElement(By.css("td:nth-child(6) span")).getText();
+        let recordedDate = await element.findElement(By.css("td:nth-child(7) span")).getText();
+        let docNumber = await element.findElement(By.css("td:nth-child(8) span")).getText();
+        let bookVolumePage = await element.findElement(By.css("td:nth-child(9) span")).getText();
+        let legalDescription = await element.findElement(By.css("td:nth-child(10) span")).getText();
 
         const internalId = internalIdRaw.split('-')[2];
         console.log(`internalId`, internalId);
