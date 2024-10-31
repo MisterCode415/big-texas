@@ -1,34 +1,55 @@
 const {By, Builder, Browser, until} = require('selenium-webdriver');
 const assert = require("assert");
 
+// list page sample:
+// https://reeves.tx.publicsearch.us/results
+// ?department=RP
+// &limit=50
+// &offset=50
+// &recordedDateRange=18000101%2C20241028
+// &searchOcrText=false
+// &searchType=quickSearch
+
+function extraction() {
+
+}
+
 (async function firstTest() {
   let driver;
-  
+  let curPage = 0;
+  const pageSize = 10;
   try {
     driver = await new Builder().forBrowser(Browser.CHROME).build();
-    //await driver.get('https://reeves.tx.publicsearch.us', {timeout: 10000 });
-    await driver.get('https://reeves.tx.publicsearch.us/doc/31290350', {timeout: 10000 });
+    await driver.get('https://reeves.tx.publicsearch.us', {timeout: 10000 });
+    //await driver.get('https://reeves.tx.publicsearch.us/doc/31290350', {timeout: 10000 });
     
     // ENTRY POINT : TODO - FILTER SET
-    // let title = await driver.getTitle();
-    // await driver.manage().setTimeouts({implicit: 500});
+    let title = await driver.getTitle();
+    await driver.manage().setTimeouts({implicit: 500});
   
-    // let submitButton = await driver.findElement(By.css("#main-content form > div.basic-search > button"));
-    // await submitButton.click();
-    // // wait for the page to load
-    // await driver.sleep(1000 + Math.random() * 1000);
+    let submitButton = await driver.findElement(By.css("#main-content form > div.basic-search > button"));
+    await submitButton.click();
+    // wait for the page to load
+    await driver.sleep(1000 + Math.random() * 1000);
 
-    // console.log("waiting for the page to load");
+    console.log("waiting for the page to load");
     
-    // await driver.wait(until.elementLocated(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr")), 10000);
-    // console.log("page loaded");
+    await driver.wait(until.elementLocated(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr")), 10000);
+    console.log("page loaded");
     
-    // let results = await driver.findElements(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr"));
-    // console.log("results", results.length);
+    let results = await driver.findElements(By.css("#main-content > div > div > div.search-results__results-wrap > div.a11y-table > table > tbody > tr"));
+    console.log("results", results.length);
 
-    // await driver.sleep(1000 + Math.random() * 1000);
-    // await results[0].click();
-    // console.log("clicked into the first result");
+    const totalResultsSelector = `[data-testid="resultsSummary"] > span:nth-of-type(1)`;
+    await driver.wait(until.elementLocated(By.css(totalResultsSelector)), 10000);
+    const totalResults = await driver.findElement(By.css(totalResultsSelector)).getText();
+    const number = totalResults.match(/of ([\d,]+)/)[1].replace(/,/g, '');
+    const pages = Math.ceil(number / pageSize);
+    console.log("total results / pages", number, pages);
+
+    await driver.sleep(1000 + Math.random() * 1000);
+    await results[0].click();
+    console.log("clicked into the first result");
 
     const firstImageSelector = "#main-content > section > div.css-wnovuq > section > svg > g > image"
     await driver.wait(until.elementLocated(By.css(firstImageSelector)), 10000);
@@ -90,9 +111,10 @@ const assert = require("assert");
     legalDescriptions = legalDescriptions.split('\n');
     legalDescriptions.shift();
 
-    const marginalReferencesSelector = `.doc-preview__summary > div:nth-of-type(5) > div > div`
+    const marginalReferencesSelector = `.doc-preview__summary > div:nth-of-type(5)`
     await driver.wait(until.elementLocated(By.css(marginalReferencesSelector)), 10000);
-    let marginalReferences = await driver.findElements(By.css(marginalReferencesSelector));
+    const marginalReferenceAnchor = await driver.findElements(By.css(marginalReferencesSelector));
+    let marginalReferences = await marginalReferenceAnchor[0].findElements(By.css('div > div'));
     const marginalReferenceMap = [];
     for (const element of marginalReferences) {
       const link = await element.findElement(By.css('a')).getAttribute('href');
@@ -102,6 +124,14 @@ const assert = require("assert");
       const date = await labels[1].getText();
       marginalReferenceMap.push({link, linkLabel, label, date});
     }
+
+    const documentRemarksSelector = `.doc-preview__summary > div:nth-of-type(6)`
+    await driver.wait(until.elementLocated(By.css(documentRemarksSelector)), 10000);
+    let documentRemarks = await driver.findElement(By.css(documentRemarksSelector)).getText();
+
+    const lotBlockMetadataSelector = `.doc-preview__summary > div:nth-of-type(7)`
+    await driver.wait(until.elementLocated(By.css(lotBlockMetadataSelector)), 10000);
+    let lotBlockMetadata = await driver.findElement(By.css(lotBlockMetadataSelector)).getText();
 
     const targetManifest = {
       storageId,
@@ -113,16 +143,23 @@ const assert = require("assert");
       documentMetadata: documentMetadataObject,
       parties: partiesObject,
       legalDescriptions,
-      marginalReferences: marginalReferenceMap
+      marginalReferences: marginalReferenceMap,
+      documentRemarks,
+      lotBlockMetadata
     }
 
     console.log("targetManifest", targetManifest);
 
     const nextLinkSelector = `#primary > button`
-    await driver.wait(until.elementLocated(By.css(nextLinkSelector[2])), 10000);
-    const nextLink = await driver.findElement(By.css(nextLinkSelector[2])); // follow me until the end of time
-    console.log("nextLink", nextLink);
-    
+    await driver.wait(until.elementLocated(By.css(nextLinkSelector)), 10000);
+    const nextLink = await driver.findElements(By.css(nextLinkSelector)); // follow me until the end of time
+    await driver.sleep(1000 + Math.random() * 1000);
+
+    //back to main page, when page is exhausted
+    //await nextLink[0].click(); 
+
+    await nextLink[2].click(); 
+    // and so on...
   } catch (e) {
     console.log(e)
   } finally {
