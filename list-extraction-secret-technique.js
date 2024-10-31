@@ -1,5 +1,6 @@
 const { By, Builder, Browser, until } = require('selenium-webdriver');
 const { MongoClient } = require('mongodb');
+const filterConfig = require('./document-types.json');
 const dotenv = require('dotenv');
 dotenv.config();
 // list page sample:
@@ -12,13 +13,13 @@ dotenv.config();
 // &searchType=quickSearch
 
 
-(async function bruteForcePOC(startAtPage = 0) {
+(async function bruteForcePOC(startAtFilterIndex = 0) {
   const targetUrl = "https://reeves.tx.publicsearch.us";
   const targetDepartment = "RP";
   const targetDateRange = "18000101,20241028";
   const targetSearchType = "quickSearch";
   const limit = 250;
-  let curPage = startAtPage;
+  let curPage = startAtFilterIndex;
   let driver;
   let maxResults = null;
   let totalPages = null;
@@ -198,10 +199,21 @@ dotenv.config();
   const client = await MongoClient.connect(process.env.MONGODB_URI);
   const db = client.db();
   const collection = db.collection('seed-data');
-
+  driver = await new Builder().forBrowser(Browser.CHROME).build();
   try {
-    driver = await new Builder().forBrowser(Browser.CHROME).build();
-    await getNextPage();
+    for (documentType of filterConfig.documentTypes) {
+      if (filterConfig[documentType] && filterConfig[documentType].length > 0) {
+        for (dateRange of filterConfig[documentType]) {
+          const specialTargetUrl = dateRange;
+          // call pageExtractor w/ the full url
+          // await pageExtractor(targetUrl);
+          console.log("Special Case: targetUrl ", specialTargetUrl);
+        }
+      } else {
+        const targetFilter = documentType;
+        console.log("Target Filter ", targetFilter);
+      }
+    }
   } catch (error) {
     console.error(error);
   } finally {
@@ -210,4 +222,4 @@ dotenv.config();
     console.log(`time end: ${new Date().toISOString()}`);
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
-}(58)) // start at page 0
+}())
