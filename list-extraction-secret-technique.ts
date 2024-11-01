@@ -132,7 +132,9 @@ function findDescription(targetDescription) {
 
     // wait on final item to load
     await driver.wait(until.elementLocated(By.css(itemCardsSelector + ':last-child')), 60000);
-    for (const itemCard of itemCards) {
+    //for (const itemCard of itemCards) {
+    for (let j = 0; j < itemCards.length; j++) {
+      const itemCard = itemCards[j];
       try {
         await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
       } catch (error) {
@@ -210,16 +212,15 @@ function findDescription(targetDescription) {
       }
       await downloadFiles(internalId, fileId, documentCount, nextLeaseBundle);
       await saveMetadata(internalId, nextLeaseBundle);
+      console.log(`Lease Complete`, internalId, nextLeaseBundle.documentType, curPageExtractor, j + 1);
     }
   }
 
   async function saveMetadata(internalId, metadata) {
     // save to db
     await collection.insertOne(metadata);
-    console.log(`Metadata persisted`);
     // save json to disk
     fs.writeFileSync(`${process.env.SAVE_FOLDER}/${internalId}/${internalId}.json`, JSON.stringify(metadata, null, 2));
-    console.log(`Metadata saved: ${process.env.SAVE_FOLDER}/${internalId}/${internalId}.json`);
   }
 
   function hasNextPageExtractor() {
