@@ -89,7 +89,7 @@ function findDescription(targetDescription) {
       } catch (error) {
         console.error(`Failed to download ${url}:`, error);
       }
-      await driver.sleep(1000 + Math.random() * 1000);
+      await driver.sleep(250 + Math.random() * 1000);
     }
   }
 
@@ -458,6 +458,6 @@ function findDescription(targetDescription) {
     console.log(`time end: ${new Date().toISOString()}`);
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
-}(51, 0, 0))
+}(51, 7, 0))
 // startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
 // offsetOverride = for special cases, start at a specific offset
