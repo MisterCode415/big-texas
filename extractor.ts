@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import countyCodes from './county-codes.json';
 import fetch from 'node-fetch';
+import { argv } from 'process';
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -35,7 +36,7 @@ function findDescription(targetDescription) {
   return null;
 }
 
-(async function BigTexas(startAtFilterIndex = 0, startAtPageIndex = 0, offsetOverride = 0) {
+(async function BigTexas(startAtFilterIndex, startAtPageIndex, offsetOverride, config = { oneShot: false }) {
   const targetUrl = "https://reeves.tx.publicsearch.us";
   const targetDepartment = "RP";
   const targetDateRange = "18000101,20241028";
@@ -50,14 +51,14 @@ function findDescription(targetDescription) {
   let totalPagesExtractor: number | null = null;
   const pageSize = 50;
 
-  async function downloadFiles(internalId, fileId, count, metadata) {
+  async function downloadFiles(internalId, fileId, count) {
     for (let i = 1; i <= count; i++) {
       const url = assetTemplate
         .replace('%internalId%', internalId)
         .replace('%fileId%', fileId)
         .replace('%count%', i.toString());
 
-      const savePath = `${process.env.SAVE_FOLDER}/${internalId}/${fileId}_${i}.png`;
+      const savePath = `${process.env.SAVE_FOLDER}/${internalId.toString()[0]}/${internalId}/${fileId}_${i}.png`;
       fs.mkdirSync(path.dirname(savePath), { recursive: true });
 
       // Set headers for the request
@@ -132,7 +133,7 @@ function findDescription(targetDescription) {
 
     // wait on final item to load
     await driver.wait(until.elementLocated(By.css(itemCardsSelector + ':last-child')), 60000);
-    //for (const itemCard of itemCards) {
+
     for (let j = 0; j < itemCards.length; j++) {
       const itemCard = itemCards[j];
       try {
@@ -210,7 +211,7 @@ function findDescription(targetDescription) {
         recordedDate,
         scannedText,
       }
-      await downloadFiles(internalId, fileId, documentCount, nextLeaseBundle);
+      await downloadFiles(internalId, fileId, documentCount);
       await saveMetadata(internalId, nextLeaseBundle);
       console.log(`Lease Complete`, internalId, nextLeaseBundle.documentType, curPageExtractor, j + 1);
     }
@@ -220,7 +221,7 @@ function findDescription(targetDescription) {
     // save to db
     await collection.insertOne(metadata);
     // save json to disk
-    fs.writeFileSync(`${process.env.SAVE_FOLDER}/${internalId}/${internalId}.json`, JSON.stringify(metadata, null, 2));
+    fs.writeFileSync(`${process.env.SAVE_FOLDER}/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(metadata, null, 2));
   }
 
   function hasNextPageExtractor() {
@@ -250,16 +251,16 @@ function findDescription(targetDescription) {
     maxResults = parseInt(maxResultsText.split('of')[1].split('results')[0].replace(/,/g, '').trim());
     totalPages = Math.ceil(maxResults / pageSize);
     await driver.sleep(1500 + Math.random() * 1000);
-    await getNextPage(filter, startAtPageIndex);
+    await getNextPage(filter, startAtPageIndex as number);
   }
 
   async function getNextPage(filter, startAtPageIndex = 0) {
     console.log("getNextPage", filter);
     if (startAtPageIndex) {
-      curPage = startAtPageIndex;
+      curPage = startAtPageIndex as number;
     }
-    if (curPage > 0) {
-      const nextLink = `${targetUrl}/results?department=${targetDepartment}&limit=${limit}&offset=${(curPage) * limit}&viewType=card&searchOcrText=false&searchType=${targetSearchType}&recordedDateRange=${targetDateRange}${filter ? `&_docTypes=${encodeURIComponent(filter)}` : ''}`
+    if (curPage as number > 0) {
+      const nextLink = `${targetUrl}/results?department=${targetDepartment}&limit=${limit}&offset=${(curPage as number) * limit}&viewType=card&searchOcrText=false&searchType=${targetSearchType}&recordedDateRange=${targetDateRange}${filter ? `&_docTypes=${encodeURIComponent(filter)}` : ''}`
       await driver.get(nextLink, { timeout: 60000 });
       await driver.manage().setTimeouts({ implicit: 500 });
 
@@ -267,7 +268,7 @@ function findDescription(targetDescription) {
     try {
       await driver.wait(until.elementLocated(By.css("#main-content div.a11y-table > table > tbody > tr")), 10000);
     } catch (error) { // likely bad data double check
-      console.error('NO DATA ON THIS PAGE...', error, `${targetUrl}/results?department=${targetDepartment}&limit=${limit}&offset=${(curPage) * limit}&searchOcrText=false&searchType=${targetSearchType}&recordedDateRange=${targetDateRange}${filter ? `&_docTypes=${encodeURIComponent(filter)}` : ''}`);
+      console.error('NO DATA ON THIS PAGE...', error, `${targetUrl}/results?department=${targetDepartment}&limit=${limit}&offset=${(curPage as number) * limit}&searchOcrText=false&searchType=${targetSearchType}&recordedDateRange=${targetDateRange}${filter ? `&_docTypes=${encodeURIComponent(filter)}` : ''}`);
       const match = "Sorry about this!"
       await driver.wait(until.elementLocated(By.css("#content")), 10000);
       const errorMessage = await driver.findElement(By.css("#content")).getText();
@@ -293,7 +294,7 @@ function findDescription(targetDescription) {
 
       const internalId = internalIdRaw.split('-')[2];
       const queueItem = {
-        id: curPage * pageSize + i,
+        id: curPage as number * pageSize + i,
         internalId,
         grantors,
         gratees,
@@ -304,107 +305,6 @@ function findDescription(targetDescription) {
         legalDescription,
       }
       resultBatch.push(queueItem);
-      // TODO: INTEGRATE SUB PAGE CRAWLS grag sub page for storage ID
-      // const nextURL = `https://reeves.tx.publicsearch.us/doc/${internalId}`;
-      // await driver.get(nextURL, { timeout: 10000 });
-      // await driver.manage().setTimeouts({ implicit: 500 });
-      // const firstImageSelector = "#main-content > section > div.css-wnovuq > section > svg > g > image"
-      // await driver.wait(until.elementLocated(By.css(firstImageSelector)), 10000);
-
-      // const documentIdSelector = `[data-testid="docPreviewSummaryItemValue"]`
-      // await driver.wait(until.elementLocated(By.css(documentIdSelector)), 10000);
-      // const documentId = await driver.findElement(By.css(documentIdSelector)).getText();
-
-      // const currentUrl = await driver.getCurrentUrl();
-      // const urlObject = new URL(currentUrl);
-
-      // console.log("extrenal Id, documentId", internalId, documentId);
-
-      // // storage id
-      // const numberOfImageSelectors = `[data-testid="docPreviewPageCount"]`
-      // await driver.wait(until.elementLocated(By.css(numberOfImageSelectors)), 10000);
-      // let numberOfImages = await driver.findElement(By.css(numberOfImageSelectors)).getText();
-      // numberOfImages = numberOfImages.replace(/of /g, '');
-      // console.log("numberOfImages", numberOfImages);
-
-      // const firstImage = await driver.findElement(By.css(firstImageSelector));
-      // const firstImageUrl = await firstImage.getAttribute('xlink:href');
-
-      // const storageId = firstImageUrl.match(/\/(\d+)_1\.png$/)[1];
-
-      // const basePath = firstImageUrl.replace(/\d+_1\.png$/, '');
-
-      // const documentTitleSelector = `.doc-preview__summary-header > h2`;
-      // await driver.wait(until.elementLocated(By.css(documentTitleSelector)), 10000);
-      // const documentTitle = await driver.findElement(By.css(documentTitleSelector)).getText();
-
-      // const documentMetadataSelector = `.doc-preview-summary__column-list-item`;
-      // await driver.wait(until.elementLocated(By.css(documentMetadataSelector)), 10000);
-      // const documentMetadata = await driver.findElements(By.css(documentMetadataSelector));
-
-      // const documentMetadataObject = {};
-      // for (const element of documentMetadata) {
-      //   const spans = await element.findElements(By.css('span'));
-      //   const key = await spans[0].getText();
-      //   const value = await spans[1].getText();
-      //   documentMetadataObject[key] = value;
-      // }
-
-      // const partiesSelector = `[data-testid="docPreviewParty"]`
-      // await driver.wait(until.elementLocated(By.css(partiesSelector)), 10000);
-      // const parties = await driver.findElements(By.css(partiesSelector));
-      // const partiesObject = {};
-      // const partyBlock = await parties[0].getText();
-      // const partyPieces = partyBlock.split('\n');
-      // // even index is the party name, odd index is the party role
-      // for (let i = 0; i < partyPieces.length; i += 2) {
-      //   partiesObject[partyPieces[i]] = partyPieces[i + 1];
-      // }
-
-      // const legalDescriptionsSelector = `.doc-preview__summary > div:nth-of-type(4)`
-      // await driver.wait(until.elementLocated(By.css(legalDescriptionsSelector)), 10000);
-      // let legalDescriptions = await driver.findElement(By.css(legalDescriptionsSelector)).getText();
-      // legalDescriptions = legalDescriptions.split('\n');
-      // legalDescriptions.shift();
-
-      // const marginalReferencesSelector = `.doc-preview__summary > div:nth-of-type(5)`
-      // await driver.wait(until.elementLocated(By.css(marginalReferencesSelector)), 10000);
-      // const marginalReferenceAnchor = await driver.findElements(By.css(marginalReferencesSelector));
-      // let marginalReferences = await marginalReferenceAnchor[0].findElements(By.css('div > div'));
-      // const marginalReferenceMap = [];
-      // for (const element of marginalReferences) {
-      //   const link = await element.findElement(By.css('a')).getAttribute('href');
-      //   const linkLabel = await element.findElement(By.css('a')).getText();
-      //   const labels = await element.findElements(By.css('span'));
-      //   const label = await labels[0].getText();
-      //   const date = await labels[1].getText();
-      //   marginalReferenceMap.push({ link, linkLabel, label, date });
-      // }
-
-      // const documentRemarksSelector = `.doc-preview__summary > div:nth-of-type(6)`
-      // await driver.wait(until.elementLocated(By.css(documentRemarksSelector)), 10000);
-      // let documentRemarks = await driver.findElement(By.css(documentRemarksSelector)).getText();
-
-      // const lotBlockMetadataSelector = `.doc-preview__summary > div:nth-of-type(7)`
-      // await driver.wait(until.elementLocated(By.css(lotBlockMetadataSelector)), 10000);
-      // let lotBlockMetadata = await driver.findElement(By.css(lotBlockMetadataSelector)).getText();
-
-      // const targetManifest = {
-      //   storageId,
-      //   basePath,
-      //   numberOfImages,
-      //   documentId,
-      //   internalId,
-      //   documentTitle,
-      //   documentMetadata: documentMetadataObject,
-      //   parties: partiesObject,
-      //   legalDescriptions,
-      //   marginalReferences: marginalReferenceMap,
-      //   documentRemarks,
-      //   lotBlockMetadata
-      // }
-
-      // console.log("targetManifest", targetManifest);
       i++;
     }
     // save batch
@@ -423,8 +323,8 @@ function findDescription(targetDescription) {
     if (!maxResults) {
       return false;
     }
-    curPage++; // done w/ last so increment
-    return (curPage * pageSize) < maxResults;
+    curPage = curPage as number + 1; // done w/ last so increment
+    return (curPage as number * pageSize) < maxResults;
   }
 
   console.log(`time start: ${new Date().toISOString()}`);
@@ -437,14 +337,23 @@ function findDescription(targetDescription) {
     console.log(`starting at filter index ${startAtFilterIndex}`);
   }
   try {
-    for (let i = startAtFilterIndex || 0; i < filterConfig.documentTypes.length; i++) {
+    for (let i = startAtFilterIndex as number || 0; i < filterConfig.documentTypes.length; i++) {
       const cur = filterConfig.documentTypes[i]
       if (filterConfig[cur] && filterConfig[cur].length > 0) {
-        for (let j = startAtPageIndex || 0; j < filterConfig[cur].length; j++) {
-          const specialTargetUrl = filterConfig[cur][j];
-          await pageExtractor(specialTargetUrl, offsetOverride);
+        if (config.oneShot) {
+          console.log("One Shot Mode");
+          const specialTargetUrl = filterConfig[cur][startAtPageIndex];
+          await pageExtractor(specialTargetUrl, offsetOverride as number);
           offsetOverride = 0; // reset for rest of list
           console.log("Special Case: targetUrl ", specialTargetUrl);
+        } else {
+          console.log("Multi Shot Mode");
+          for (let j = startAtPageIndex as number || 0; j < filterConfig[cur].length; j++) {
+            const specialTargetUrl = filterConfig[cur][j];
+            await pageExtractor(specialTargetUrl, offsetOverride as number);
+            offsetOverride = 0; // reset for rest of list
+            console.log("Special Case: targetUrl ", specialTargetUrl);
+          }
         }
       } else {
         console.log("Target Filter ", cur);
@@ -459,6 +368,10 @@ function findDescription(targetDescription) {
     console.log(`time end: ${new Date().toISOString()}`);
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
-}(51, 7, 0))
+}((argv[2] || 0), (argv[3] || 0), (argv[4] || 0), {
+  oneShot: true,
+}));
+
+//51, 7, 0,
 // startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
 // offsetOverride = for special cases, start at a specific offset
