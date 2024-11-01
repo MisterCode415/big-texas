@@ -5,6 +5,8 @@ import fs from 'fs';
 import path from 'path';
 import countyCodes from './county-codes.json';
 import fetch from 'node-fetch';
+import { Readable } from 'stream';
+import { finished } from 'stream/promises';
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -19,48 +21,47 @@ dotenv.config();
 const assetTemplate = `https://reeves.tx.publicsearch.us/files/documents/%internalId%/images/%fileId%_%count%.png`
 
 async function downloadFile(internalId, fileId, count, metadata) {
-  const metadataPath = `${process.env.SAVE_FOLDER}/${internalId}/${internalId}.json`;
   for (let i = 1; i <= count; i++) {
     const url = assetTemplate
       .replace('%internalId%', internalId)
       .replace('%fileId%', fileId)
-      .replace('%count%', count);
+      .replace('%count%', i.toString());
 
     const savePath = `${process.env.SAVE_FOLDER}/${internalId}/${fileId}_${i}.png`;
     fs.mkdirSync(path.dirname(savePath), { recursive: true });
 
     // Set headers for the request
     const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept': 'image/png,image/jpeg,image/jpg,image/*',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+      'Accept-Encoding': 'gzip, deflate, br, zstd',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Cookie': 'authToken=9feccbdd-8daa-41e4-80b1-2528875b5c88; authToken.sig=fY1_Ui1YO2SL3qo6cCvcsjpPCrw; _ga_R8DLNV5LWZ=GS1.1.1730490696.1.0.1730490696.0.0.0; _ga=GA1.2.2123656417.1730490697; _gid=GA1.2.1829217426.1730490697; __stripe_mid=68b879aa-f786-4853-9e08-760ad5e83033691c86; __stripe_sid=93a70e8f-1973-4aac-863d-cc7d537b97028f92ad; _gat_gtag_UA_115781850_1=1',
+      'Host': 'reeves.tx.publicsearch.us',
+      'If-None-Match': '"87-8vUAd8oTw/9DZQZkWb4ge8Lh+aY"',
+      'Referer': 'https://reeves.tx.publicsearch.us/doc/47054591',
+      'Sec-CH-UA': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
+      'Sec-CH-UA-Mobile': '?0',
+      'Sec-CH-UA-Platform': '"macOS"',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'same-origin',
+      'Sec-Fetch-User': '?1',
+      'Upgrade-Insecure-Requests': '1',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
     };
 
     try {
-      console.log(`Fetching URL: ${url}`); // Log the URL being fetched
-      const response = await fetch(url, { method: 'GET', headers: headers });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Check the content type to ensure it's a PNG
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('image/png')) {
-        throw new Error(`Expected PNG but received ${contentType}`);
-      }
-
-      // Create a write stream to save the file
-      const fileStream = fs.createWriteStream(savePath);
-      response.body?.pipe(fileStream); // Stream the response body to the file
-      if (!response.body) {
-        console.error("No body", url);
-      }
+      console.log(`Fetching URL: ${url}`);
+      const response = await fetch(url, { headers });
+      const buffer = await response.buffer();
+      fs.writeFileSync(savePath, buffer);
+      console.log(`Downloaded: ${savePath}`);
     } catch (error) {
       console.error(`Failed to download ${url}:`, error);
     }
   }
-  fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2)); // Save metadata in pretty format
-  console.log(`Metadata saved: ${metadataPath}`);
 }
 
 
@@ -179,8 +180,8 @@ function findDescription(targetDescription) {
         recordedDate,
         scannedText,
       }
-      await saveMetadata(internalId, nextLeaseBundle);
       await downloadFile(internalId, fileId, documentCount, nextLeaseBundle);
+      await saveMetadata(internalId, nextLeaseBundle);
     }
   }
 
@@ -188,6 +189,9 @@ function findDescription(targetDescription) {
     // save to db
     await collection.insertOne(metadata);
     console.log(`Metadata persisted`);
+    // save json to disk
+    fs.writeFileSync(`${process.env.SAVE_FOLDER}/${internalId}/${internalId}.json`, JSON.stringify(metadata, null, 2));
+    console.log(`Metadata saved: ${process.env.SAVE_FOLDER}/${internalId}/${internalId}.json`);
   }
 
   function hasNextPageExtractor() {
