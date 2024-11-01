@@ -5,8 +5,6 @@ import fs from 'fs';
 import path from 'path';
 import countyCodes from './county-codes.json';
 import fetch from 'node-fetch';
-import { Readable } from 'stream';
-import { finished } from 'stream/promises';
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -20,49 +18,6 @@ dotenv.config();
 // &searchType=quickSearch
 const assetTemplate = `https://reeves.tx.publicsearch.us/files/documents/%internalId%/images/%fileId%_%count%.png`
 
-async function downloadFile(internalId, fileId, count, metadata) {
-  for (let i = 1; i <= count; i++) {
-    const url = assetTemplate
-      .replace('%internalId%', internalId)
-      .replace('%fileId%', fileId)
-      .replace('%count%', i.toString());
-
-    const savePath = `${process.env.SAVE_FOLDER}/${internalId}/${fileId}_${i}.png`;
-    fs.mkdirSync(path.dirname(savePath), { recursive: true });
-
-    // Set headers for the request
-    const headers = {
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-      'Accept-Encoding': 'gzip, deflate, br, zstd',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Cookie': 'authToken=9feccbdd-8daa-41e4-80b1-2528875b5c88; authToken.sig=fY1_Ui1YO2SL3qo6cCvcsjpPCrw; _ga_R8DLNV5LWZ=GS1.1.1730490696.1.0.1730490696.0.0.0; _ga=GA1.2.2123656417.1730490697; _gid=GA1.2.1829217426.1730490697; __stripe_mid=68b879aa-f786-4853-9e08-760ad5e83033691c86; __stripe_sid=93a70e8f-1973-4aac-863d-cc7d537b97028f92ad; _gat_gtag_UA_115781850_1=1',
-      'Host': 'reeves.tx.publicsearch.us',
-      'If-None-Match': '"87-8vUAd8oTw/9DZQZkWb4ge8Lh+aY"',
-      'Referer': 'https://reeves.tx.publicsearch.us/doc/47054591',
-      'Sec-CH-UA': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
-      'Sec-CH-UA-Mobile': '?0',
-      'Sec-CH-UA-Platform': '"macOS"',
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'same-origin',
-      'Sec-Fetch-User': '?1',
-      'Upgrade-Insecure-Requests': '1',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
-    };
-
-    try {
-      console.log(`Fetching URL: ${url}`);
-      const response = await fetch(url, { headers });
-      const buffer = await response.buffer();
-      fs.writeFileSync(savePath, buffer);
-      console.log(`Downloaded: ${savePath}`);
-    } catch (error) {
-      console.error(`Failed to download ${url}:`, error);
-    }
-  }
-}
 
 
 function findDescription(targetDescription) {
@@ -80,7 +35,7 @@ function findDescription(targetDescription) {
   return null;
 }
 
-(async function BigTexas(startAtFilterIndex = 0, startAtPageIndex = 0) {
+(async function BigTexas(startAtFilterIndex = 0, startAtPageIndex = 0, offsetOverride = 0) {
   const targetUrl = "https://reeves.tx.publicsearch.us";
   const targetDepartment = "RP";
   const targetDateRange = "18000101,20241028";
@@ -95,14 +50,65 @@ function findDescription(targetDescription) {
   let totalPagesExtractor: number | null = null;
   const pageSize = 50;
 
-  async function pageExtractor(url) {
+  async function downloadFiles(internalId, fileId, count, metadata) {
+    for (let i = 1; i <= count; i++) {
+      const url = assetTemplate
+        .replace('%internalId%', internalId)
+        .replace('%fileId%', fileId)
+        .replace('%count%', i.toString());
+
+      const savePath = `${process.env.SAVE_FOLDER}/${internalId}/${fileId}_${i}.png`;
+      fs.mkdirSync(path.dirname(savePath), { recursive: true });
+
+      // Set headers for the request
+      const headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Cookie': 'authToken=9feccbdd-8daa-41e4-80b1-2528875b5c88; authToken.sig=fY1_Ui1YO2SL3qo6cCvcsjpPCrw; _ga_R8DLNV5LWZ=GS1.1.1730490696.1.0.1730490696.0.0.0; _ga=GA1.2.2123656417.1730490697; _gid=GA1.2.1829217426.1730490697; __stripe_mid=68b879aa-f786-4853-9e08-760ad5e83033691c86; __stripe_sid=93a70e8f-1973-4aac-863d-cc7d537b97028f92ad; _gat_gtag_UA_115781850_1=1',
+        'Host': 'reeves.tx.publicsearch.us',
+        'If-None-Match': '"87-8vUAd8oTw/9DZQZkWb4ge8Lh+aY"',
+        'Referer': 'https://reeves.tx.publicsearch.us/doc/47054591',
+        'Sec-CH-UA': '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
+        'Sec-CH-UA-Mobile': '?0',
+        'Sec-CH-UA-Platform': '"macOS"',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
+      };
+
+      try {
+        const response = await fetch(url, { headers });
+        const buffer = await response.buffer();
+        fs.writeFileSync(savePath, buffer);
+      } catch (error) {
+        console.error(`Failed to download ${url}:`, error);
+      }
+      await driver.sleep(1000 + Math.random() * 1000);
+    }
+  }
+
+
+  async function pageExtractor(url, offsetOverrideStart = 0) {
     await driver.sleep(2000 + Math.random() * 1000);
     // get crawl stats from first page
     await driver.get(url + '&offset=0', { timeout: 60000 }); // first 
     const totalResultsSelector = `[data-testid="resultsSummary"] > span:nth-of-type(1)`;
-    await driver.wait(until.elementLocated(By.css(totalResultsSelector)), 10000);
-    const maxResultsText = await driver.findElement(By.css(totalResultsSelector)).getText();
+    let maxResultsText;
+    try {
+      await driver.wait(until.elementLocated(By.css(totalResultsSelector)), 10000);
+      maxResultsText = await driver.findElement(By.css(totalResultsSelector)).getText();
+    } catch (error) {
+      console.error('NO DATA ON THIS PAGE...', error, url + '&offset=0');
+      return;
+    }
     maxResultsExtractor = parseInt(maxResultsText.split('of')[1].split('results')[0].replace(/,/g, '').trim());
+    curPageExtractor = offsetOverrideStart || 0;
     totalPagesExtractor = Math.ceil(maxResultsExtractor / pageSize);
     if (hasNextPageExtractor()) {
       await getNextPageExtractor(url, ++curPageExtractor)
@@ -120,8 +126,30 @@ function findDescription(targetDescription) {
     const itemCardsSelector = `.result-card`
     await driver.wait(until.elementLocated(By.css(itemCardsSelector)), 10000);
     const itemCards = await driver.findElements(By.css(itemCardsSelector));
+    // scroll to bottom to load all items
+    await driver.executeScript('window.scrollTo({left:0, top:document.body.scrollHeight, behavior:"smooth"});');
+    await driver.sleep(1000 + Math.random() * 1000);
+
+    // wait on final item to load
+    await driver.wait(until.elementLocated(By.css(itemCardsSelector + ':last-child')), 60000);
     for (const itemCard of itemCards) {
-      const internalIdNode = await itemCard.findElement(By.css(`.thumbnail__image`));
+      try {
+        await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
+      } catch (error) {
+        console.error('NO DATA ON THIS ITEM WAITING...', error);
+        await driver.sleep(1000 + Math.random() * 1000);
+        continue;
+      }
+
+      let internalIdNode;
+      try {
+        internalIdNode = await itemCard.findElement(By.css(`.thumbnail__image`));
+      } catch (error) {
+        console.error('NO DATA ON THIS ITEM NODE...', error);
+        await driver.sleep(1000 + Math.random() * 1000);
+        continue;
+      }
+
       const internalIdRaw = await internalIdNode.getAttribute('src');
       const fileIdPieces = internalIdRaw.split('/');
       const fileIdDirty = fileIdPieces[fileIdPieces.length - 1];
@@ -180,7 +208,7 @@ function findDescription(targetDescription) {
         recordedDate,
         scannedText,
       }
-      await downloadFile(internalId, fileId, documentCount, nextLeaseBundle);
+      await downloadFiles(internalId, fileId, documentCount, nextLeaseBundle);
       await saveMetadata(internalId, nextLeaseBundle);
     }
   }
@@ -411,10 +439,10 @@ function findDescription(targetDescription) {
     for (let i = startAtFilterIndex || 0; i < filterConfig.documentTypes.length; i++) {
       const cur = filterConfig.documentTypes[i]
       if (filterConfig[cur] && filterConfig[cur].length > 0) {
-        for (const dateRange of filterConfig[cur]) {
-          const specialTargetUrl = dateRange;
-          // call pageExtractor w/ the full url
-          await pageExtractor(specialTargetUrl);
+        for (let j = startAtPageIndex || 0; j < filterConfig[cur].length; j++) {
+          const specialTargetUrl = filterConfig[cur][j];
+          await pageExtractor(specialTargetUrl, offsetOverride);
+          offsetOverride = 0; // reset for rest of list
           console.log("Special Case: targetUrl ", specialTargetUrl);
         }
       } else {
@@ -430,4 +458,6 @@ function findDescription(targetDescription) {
     console.log(`time end: ${new Date().toISOString()}`);
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
-}(51, 0))
+}(51, 0, 0))
+// startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
+// offsetOverride = for special cases, start at a specific offset
