@@ -9,17 +9,8 @@ import { argv } from 'process';
 
 const dotenv = require('dotenv');
 dotenv.config();
-// list page sample:
-// https://reeves.tx.publicsearch.us/results
-// ?department=RP
-// &limit=50
-// &offset=50
-// &recordedDateRange=18000101%2C20241028
-// &searchOcrText=false
-// &searchType=quickSearch
+
 const assetTemplate = `https://reeves.tx.publicsearch.us/files/documents/%internalId%/images/%fileId%_%count%.png`
-
-
 
 function findDescription(targetDescription) {
   for (const group of countyCodes.codes) {
@@ -36,7 +27,7 @@ function findDescription(targetDescription) {
   return null;
 }
 
-(async function BigTexas(startAtFilterIndex, startAtPageIndex, offsetOverride, config = { oneShot: false }) {
+(async function BigTexas(startAtFilterIndex, startAtPageIndex, offsetOverride, indexOverride, config = { oneShot: false }) {
   const targetUrl = "https://reeves.tx.publicsearch.us";
   const targetDepartment = "RP";
   const targetDateRange = "18000101,20241028";
@@ -44,7 +35,7 @@ function findDescription(targetDescription) {
   const limit = 50;
   let curPage = startAtFilterIndex;
   let curPageExtractor = 0;
-  let driver;
+  let driver: any;
   let maxResults: number | null = null;
   let maxResultsExtractor: number | null = null;
   let totalPages: number | null = null;
@@ -122,7 +113,7 @@ function findDescription(targetDescription) {
   async function getNextPageExtractor(url, page) {
     await driver.sleep(2000 + Math.random() * 1000);
     if (curPageExtractor > 1) {
-      await driver.get(url, { timeout: 10000 });
+      await driver.get(url + '&offset=' + ((page - 1) * pageSize).toString(), { timeout: 10000 });
     }
     const itemCardsSelector = `.result-card`
     await driver.wait(until.elementLocated(By.css(itemCardsSelector)), 10000);
@@ -225,6 +216,7 @@ function findDescription(targetDescription) {
   }
 
   function hasNextPageExtractor() {
+    console.log("hasNextPageExtractor", totalPagesExtractor, ' total - on ', curPageExtractor);
     if (!totalPagesExtractor) return false
     return curPageExtractor < totalPagesExtractor;
   }
@@ -348,7 +340,7 @@ function findDescription(targetDescription) {
           console.log("Special Case: targetUrl ", specialTargetUrl);
         } else {
           console.log("Multi Shot Mode");
-          for (let j = startAtPageIndex as number || 0; j < filterConfig[cur].length; j++) {
+          for (let j = startAtPageIndex as number; j < filterConfig[cur].length; j++) {
             const specialTargetUrl = filterConfig[cur][j];
             await pageExtractor(specialTargetUrl, offsetOverride as number);
             offsetOverride = 0; // reset for rest of list
@@ -368,10 +360,19 @@ function findDescription(targetDescription) {
     console.log(`time end: ${new Date().toISOString()}`);
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
-}((argv[2] || 0), (argv[3] || 0), (argv[4] || 0), {
+}((argv[2] || 51), (argv[3] || 7), (argv[4] || 24), (argv[5] || 0), {
   oneShot: true,
 }));
 
 //51, 7, 0,
 // startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
 // offsetOverride = for special cases, start at a specific offset
+
+// list page sample:
+// https://reeves.tx.publicsearch.us/results
+// ?department=RP
+// &limit=50
+// &offset=50
+// &recordedDateRange=18000101%2C20241028
+// &searchOcrText=false
+// &searchType=quickSearch
