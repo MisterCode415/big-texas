@@ -124,7 +124,7 @@ function findDescription(targetDescription) {
 
   async function getNextPageExtractor(url, page) {
     await driver.sleep(2000 + Math.random() * 1000);
-    if (curPageExtractor > 0) {
+    if (curPageExtractor > 1) {
       await driver.get(url + '&offset=' + ((page - 1) * pageSize).toString(), { timeout: 10000 });
     }
     await stepScrollToBottom();
@@ -383,7 +383,7 @@ function findDescription(targetDescription) {
     console.log(`time end: ${new Date().toISOString()}`);
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
-}((argv[2] || 51), (argv[3] || 7), (argv[4] || 24), (argv[5] || 0), {
+}((argv[2] || 51), (argv[3] || 7), (argv[4] || 0), (argv[5] || 0), {
   oneShot: true,
 }));
 
