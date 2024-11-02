@@ -138,7 +138,7 @@ function findDescription(targetDescription) {
     // wait on final item to load
     await driver.wait(until.elementLocated(By.css(itemCardsSelector + ':last-child')), 60000);
 
-    for (let j = 0; j < itemCards.length; j++) {
+    for (let j = itemCards.length - 1; j >= 0; j--) {
       const itemCard = itemCards[j];
       try {
         await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
