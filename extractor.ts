@@ -6,6 +6,7 @@ import path from 'path';
 import countyCodes from './county-codes.json';
 import fetch from 'node-fetch';
 import { argv } from 'process';
+import { BlobServiceClient } from '@azure/storage-blob';
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -41,6 +42,17 @@ function findDescription(targetDescription) {
   let totalPages: number | null = null;
   let totalPagesExtractor: number | null = null;
   const pageSize = 50;
+
+  async function stepScrollToBottom() {
+    // walk down the page in steps, equal to a division of the limit and page height
+    const steps = await driver.executeScript('Math.ceil(document.body.scrollHeight / window.innerHeight)');
+    const stepHeight = await driver.executeScript('window.innerHeight');
+    for (let i = steps; i > 0; i--) {
+      const nextStep = i * stepHeight;
+      await driver.executeScript(`window.scrollTo({left:0, top:${nextStep}, behavior:"smooth"});`);
+      await driver.sleep(1000 + Math.random() * 1000);
+    }
+  }
 
   async function downloadFiles(internalId, fileId, count) {
     for (let i = 1; i <= count; i++) {
@@ -78,6 +90,7 @@ function findDescription(targetDescription) {
         const response = await fetch(url, { headers });
         const buffer = await response.buffer();
         fs.writeFileSync(savePath, buffer);
+        await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${fileId}_${i}.png`, buffer);
       } catch (error) {
         console.error(`Failed to download ${url}:`, error);
       }
@@ -112,9 +125,10 @@ function findDescription(targetDescription) {
 
   async function getNextPageExtractor(url, page) {
     await driver.sleep(2000 + Math.random() * 1000);
-    if (curPageExtractor > 1) {
+    if (curPageExtractor > 0) {
       await driver.get(url + '&offset=' + ((page - 1) * pageSize).toString(), { timeout: 10000 });
     }
+    await stepScrollToBottom();
     const itemCardsSelector = `.result-card`
     await driver.wait(until.elementLocated(By.css(itemCardsSelector)), 10000);
     const itemCards = await driver.findElements(By.css(itemCardsSelector));
@@ -204,8 +218,18 @@ function findDescription(targetDescription) {
       }
       await downloadFiles(internalId, fileId, documentCount);
       await saveMetadata(internalId, nextLeaseBundle);
+      await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(nextLeaseBundle, null, 2));
       console.log(`Lease Complete`, internalId, nextLeaseBundle.documentType, curPageExtractor, j + 1);
     }
+  }
+
+  async function writeFileToAzure(containerName, fileName, content) {
+    const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+    await blockBlobClient.upload(content, Buffer.byteLength(content));
+    console.log(`File ${fileName} uploaded to Azure container ${containerName}`);
   }
 
   async function saveMetadata(internalId, metadata) {
@@ -334,7 +358,7 @@ function findDescription(targetDescription) {
       if (filterConfig[cur] && filterConfig[cur].length > 0) {
         if (config.oneShot) {
           console.log("One Shot Mode");
-          const specialTargetUrl = filterConfig[cur][startAtPageIndex];
+          const specialTargetUrl = filterConfig[cur][startAtPageIndex].replace('%LIMIT%', limit);
           await pageExtractor(specialTargetUrl, offsetOverride as number);
           offsetOverride = 0; // reset for rest of list
           console.log("Special Case: targetUrl ", specialTargetUrl);
