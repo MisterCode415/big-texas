@@ -106,8 +106,7 @@ function findDescription(targetDescription) {
     }
   }
 
-
-  async function pageExtractor(url, offsetOverrideStart = 0, itemOnPageOverrideStart = 0) {
+  async function pageExtractor(url, offsetOverrideStart = null, itemOnPageOverrideStart = null) {
     await driver.sleep(2000 + Math.random() * 1000);
     // get crawl stats from first page
     await driver.get(url + '&offset=0', { timeout: 60000 }); // first 
@@ -120,18 +119,26 @@ function findDescription(targetDescription) {
       console.error('NO DATA ON THIS PAGE...', error, url + '&offset=0');
       return;
     } 55
+    // we want max results from page 1 either way...
     maxResultsExtractor = parseInt(maxResultsText.split('of')[1].split('results')[0].replace(/,/g, '').trim());
-    curPageExtractor = offsetOverrideStart || 0;
     totalPagesExtractor = Math.ceil(maxResultsExtractor / pageSize);
+    curPageExtractor = offsetOverrideStart || curPageExtractor; // either override or start at 0
+
     if (hasNextPageExtractor()) {
-      await getNextPageExtractor(url, ++curPageExtractor, itemOnPageOverrideStart)
+      curPageExtractor++;
+      await driver.sleep(2000 + Math.random() * 1000);
+      await getNextPageExtractor(url, curPageExtractor, itemOnPageOverrideStart || 0);
+      return await pageExtractor(url, null, null);
     } else {
       console.log("no more pages for this extractor");
+      console.log(`total pages: `, totalPagesExtractor, `current page: `, curPageExtractor);
+      // reset curPageExtractor
+      curPageExtractor = 0;
       return;
     }
   }
 
-  async function getNextPageExtractor(url, page, itemOnPageOverrideStart = 0) {
+  async function getNextPageExtractor(url, page, itemOnPageOverrideStart = null) {
     await driver.sleep(2000 + Math.random() * 1000);
     if (curPageExtractor > 1) {
       await driver.get(url + '&offset=' + ((page - 1) * pageSize).toString(), { timeout: 10000 });
@@ -146,6 +153,9 @@ function findDescription(targetDescription) {
 
     // wait on final item to load
     await driver.wait(until.elementLocated(By.css(itemCardsSelector + ':last-child')), 60000);
+    if (itemOnPageOverrideStart) {
+      console.log(`itemOnPageOverrideStart :: `, itemOnPageOverrideStart);
+    }
     for (let j = itemOnPageOverrideStart || itemCards.length - 1; j >= 0; j--) {
       const itemCard = itemCards[j];
       try {
@@ -227,7 +237,7 @@ function findDescription(targetDescription) {
       await downloadFiles(internalId, fileId, documentCount);
       await saveMetadata(internalId, nextLeaseBundle);
       await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(nextLeaseBundle, null, 2));
-      console.log(`Lease Complete`, internalId, nextLeaseBundle.documentType, curPageExtractor, j + 1);
+      console.log(`Lease Complete`, internalId, `page`, page, `items left: `, j);
     }
   }
 
@@ -248,7 +258,7 @@ function findDescription(targetDescription) {
   }
 
   function hasNextPageExtractor() {
-    console.log("hasNextPageExtractor", totalPagesExtractor, ' total - on ', curPageExtractor);
+    console.log("hasNextPageExtractor", totalPagesExtractor, 'total pages, currently on page', curPageExtractor as number + 1);
     if (!totalPagesExtractor) return false
     return curPageExtractor < totalPagesExtractor;
   }

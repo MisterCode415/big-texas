@@ -15,7 +15,7 @@
         "51",
         "7",
         "2",
-        "48"
+        "1"
       ],
       // The working directory of the program.
       "cwd": "${workspaceFolder}",
