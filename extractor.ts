@@ -44,9 +44,8 @@ function findDescription(targetDescription) {
   const pageSize = 50;
 
   async function stepScrollToBottom() {
-    // walk down the page in steps, equal to a division of the limit and page height
-    const steps = await driver.executeScript('Math.ceil(document.body.scrollHeight / window.innerHeight)');
-    const stepHeight = await driver.executeScript('window.innerHeight');
+    const steps = await driver.executeScript('return Math.ceil(document.body.scrollHeight / window.innerHeight)');
+    const stepHeight = await driver.executeScript('return window.innerHeight');
     for (let i = steps; i > 0; i--) {
       const nextStep = i * stepHeight;
       await driver.executeScript(`window.scrollTo({left:0, top:${nextStep}, behavior:"smooth"});`);
