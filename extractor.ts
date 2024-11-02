@@ -11,6 +11,9 @@ import { BlobServiceClient } from '@azure/storage-blob';
 const dotenv = require('dotenv');
 dotenv.config();
 
+console.log('argv ', argv);
+
+
 const assetTemplate = `https://reeves.tx.publicsearch.us/files/documents/%internalId%/images/%fileId%_%count%.png`
 
 function findDescription(targetDescription) {
@@ -28,7 +31,13 @@ function findDescription(targetDescription) {
   return null;
 }
 
-(async function BigTexas(startAtFilterIndex, startAtPageIndex, offsetOverride, indexOverride, config = { oneShot: false }) {
+(async function BigTexas(startAtFilterIndex, startAtPageIndex, offsetOverride, itemOnPageOverride, config = { oneShot: false }) {
+  // convert args to numbers
+  startAtFilterIndex = parseInt(startAtFilterIndex as string);
+  startAtPageIndex = parseInt(startAtPageIndex as string);
+  offsetOverride = parseInt(offsetOverride as string);
+  itemOnPageOverride = parseInt(itemOnPageOverride as string);
+
   const targetUrl = "https://reeves.tx.publicsearch.us";
   const targetDepartment = "RP";
   const targetDateRange = "18000101,20241028";
@@ -43,7 +52,7 @@ function findDescription(targetDescription) {
   let totalPagesExtractor: number | null = null;
   const pageSize = 50;
 
-  async function stepScrollToBottom() {
+  async function stepScrollFromBottom() {
     const steps = await driver.executeScript('return Math.ceil(document.body.scrollHeight / window.innerHeight)');
     const stepHeight = await driver.executeScript('return window.innerHeight');
     for (let i = steps; i > 0; i--) {
@@ -98,7 +107,7 @@ function findDescription(targetDescription) {
   }
 
 
-  async function pageExtractor(url, offsetOverrideStart = 0) {
+  async function pageExtractor(url, offsetOverrideStart = 0, itemOnPageOverrideStart = 0) {
     await driver.sleep(2000 + Math.random() * 1000);
     // get crawl stats from first page
     await driver.get(url + '&offset=0', { timeout: 60000 }); // first 
@@ -110,24 +119,24 @@ function findDescription(targetDescription) {
     } catch (error) {
       console.error('NO DATA ON THIS PAGE...', error, url + '&offset=0');
       return;
-    }
+    } 55
     maxResultsExtractor = parseInt(maxResultsText.split('of')[1].split('results')[0].replace(/,/g, '').trim());
     curPageExtractor = offsetOverrideStart || 0;
     totalPagesExtractor = Math.ceil(maxResultsExtractor / pageSize);
     if (hasNextPageExtractor()) {
-      await getNextPageExtractor(url, ++curPageExtractor)
+      await getNextPageExtractor(url, ++curPageExtractor, itemOnPageOverrideStart)
     } else {
       console.log("no more pages for this extractor");
       return;
     }
   }
 
-  async function getNextPageExtractor(url, page) {
+  async function getNextPageExtractor(url, page, itemOnPageOverrideStart = 0) {
     await driver.sleep(2000 + Math.random() * 1000);
     if (curPageExtractor > 1) {
       await driver.get(url + '&offset=' + ((page - 1) * pageSize).toString(), { timeout: 10000 });
     }
-    await stepScrollToBottom();
+    await stepScrollFromBottom();
     const itemCardsSelector = `.result-card`
     await driver.wait(until.elementLocated(By.css(itemCardsSelector)), 10000);
     const itemCards = await driver.findElements(By.css(itemCardsSelector));
@@ -137,8 +146,7 @@ function findDescription(targetDescription) {
 
     // wait on final item to load
     await driver.wait(until.elementLocated(By.css(itemCardsSelector + ':last-child')), 60000);
-
-    for (let j = itemCards.length - 1; j >= 0; j--) {
+    for (let j = itemOnPageOverrideStart || itemCards.length - 1; j >= 0; j--) {
       const itemCard = itemCards[j];
       try {
         await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
@@ -215,6 +223,7 @@ function findDescription(targetDescription) {
         recordedDate,
         scannedText,
       }
+
       await downloadFiles(internalId, fileId, documentCount);
       await saveMetadata(internalId, nextLeaseBundle);
       await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(nextLeaseBundle, null, 2));
@@ -357,8 +366,8 @@ function findDescription(targetDescription) {
       if (filterConfig[cur] && filterConfig[cur].length > 0) {
         if (config.oneShot) {
           console.log("One Shot Mode");
-          const specialTargetUrl = filterConfig[cur][startAtPageIndex].replace('%LIMIT%', limit);
-          await pageExtractor(specialTargetUrl, offsetOverride as number);
+          const specialTargetUrl = filterConfig[cur][startAtPageIndex as number].replace('%LIMIT%', limit);
+          await pageExtractor(specialTargetUrl, offsetOverride as number, itemOnPageOverride as number);
           offsetOverride = 0; // reset for rest of list
           console.log("Special Case: targetUrl ", specialTargetUrl);
         } else {
@@ -383,11 +392,10 @@ function findDescription(targetDescription) {
     console.log(`time end: ${new Date().toISOString()}`);
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
-}((argv[2] || 51), (argv[3] || 7), (argv[4] || 0), (argv[5] || 0), {
+}((argv[2] || 0), (argv[3] || 0), (argv[4] || 0), (argv[5] || 0), {
   oneShot: true,
 }));
-
-//51, 7, 0,
+// 51, 7, 0
 // startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
 // offsetOverride = for special cases, start at a specific offset
 

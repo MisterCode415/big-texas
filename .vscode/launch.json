@@ -11,7 +11,12 @@
       // The path to a JavaScript or TypeScript file to run.
       "program": "${file}",
       // The arguments to pass to the program, if any.
-      "args": [],
+      "args": [
+        "51",
+        "7",
+        "2",
+        "48"
+      ],
       // The working directory of the program.
       "cwd": "${workspaceFolder}",
       // The environment variables to pass to the program.
