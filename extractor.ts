@@ -137,6 +137,7 @@ function findDescription(targetDescription) {
       }
       await driver.sleep(250 + Math.random() * 1000);
     }
+    console.log(`Downloaded ${count} files for ${internalId} ${fileId}`);
   }
 
   async function pageExtractor(url) {
@@ -299,7 +300,7 @@ function findDescription(targetDescription) {
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blockBlobClient = containerClient.getBlockBlobClient(fileName);
     await blockBlobClient.upload(content, Buffer.byteLength(content));
-    console.log(`File ${fileName} uploaded to Azure container ${containerName}`);
+    //console.log(`File ${fileName} uploaded to Azure container ${containerName}`);
   }
 
   async function saveMetadata(internalId, metadata) {
