@@ -31,17 +31,30 @@ function findDescription(targetDescription) {
   return null;
 }
 
-(async function BigTexas({ startAtFilterIndex, startAtPageIndex, offsetOverride, itemOnPageOverride, endAtFilterIndex, endAtPageIndex, offsetOverrideEnd, itemOnPageOverrideEnd }: any, config = { oneShot: false }) {
+(async function BigTexas({
+  startAtFilterIndex,
+  startAtPageIndex,
+  offsetOverride,
+  itemOnPageOverride,
+  endAtFilterIndex,
+  endAtPageIndex,
+  offsetOverrideEnd,
+  itemOnPageOverrideEnd
+}: any, config = { oneShot: false }) {
   // convert args to numbers
-  startAtFilterIndex = parseInt(startAtFilterIndex as string);
-  startAtPageIndex = parseInt(startAtPageIndex as string);
-  offsetOverride = parseInt(offsetOverride as string);
-  itemOnPageOverride = parseInt(itemOnPageOverride as string);
+  startAtFilterIndex = determine(startAtFilterIndex)
+  startAtPageIndex = determine(startAtPageIndex)
+  offsetOverride = determine(offsetOverride)
+  itemOnPageOverride = determine(itemOnPageOverride)
 
-  endAtFilterIndex = parseInt(endAtFilterIndex as string);
-  endAtPageIndex = parseInt(endAtPageIndex as string);
-  offsetOverrideEnd = parseInt(offsetOverrideEnd as string);
-  itemOnPageOverrideEnd = parseInt(itemOnPageOverrideEnd as string);
+  endAtFilterIndex = determine(endAtFilterIndex)
+  endAtPageIndex = determine(endAtPageIndex)
+  offsetOverrideEnd = determine(offsetOverrideEnd)
+  itemOnPageOverrideEnd = determine(itemOnPageOverrideEnd)
+
+  function determine(argument) {
+    return parseInt(argument as string) >= 0 ? parseInt(argument as string) : null;
+  }
 
   const targetUrl = "https://reeves.tx.publicsearch.us";
   const targetDepartment = "RP";
@@ -123,7 +136,7 @@ function findDescription(targetDescription) {
     } catch (error) {
       console.error('NO DATA ON THIS PAGE...', error, url + '&offset=0');
       return;
-    } 55
+    }
     // we want max results from page 1 either way...
     maxResultsExtractor = parseInt(maxResultsText.split('of')[1].split('results')[0].replace(/,/g, '').trim());
     totalPagesExtractor = Math.ceil(maxResultsExtractor / pageSize);
@@ -159,9 +172,12 @@ function findDescription(targetDescription) {
     // wait on final item to load
     await driver.wait(until.elementLocated(By.css(itemCardsSelector + ':last-child')), 60000);
     if (itemOnPageOverrideStart) {
-      console.log(`itemOnPageOverrideStart :: `, itemOnPageOverrideStart);
+      console.log(`overriding item on page to :: `,
+        itemOnPageOverrideStart,
+        ` and ending at ::  `,
+        itemOnPageOverrideEnd);
     }
-    for (let j = itemOnPageOverrideStart || itemCards.length - 1; j >= 0; j--) {
+    for (let j = itemOnPageOverrideStart || itemCards.length - 1; j >= (itemOnPageOverrideEnd) || 0; j--) {
       const itemCard = itemCards[j];
       try {
         await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
@@ -238,12 +254,12 @@ function findDescription(targetDescription) {
         recordedDate,
         scannedText,
       }
-
       await downloadFiles(internalId, fileId, documentCount);
       await saveMetadata(internalId, nextLeaseBundle);
       await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(nextLeaseBundle, null, 2));
-      console.log(`Lease Complete`, internalId, `page`, page, `items left: `, j);
+      console.log(`Lease Complete`, internalId, `page`, page, `, items left: `, j);
     }
+    itemOnPageOverrideEnd = null;
   }
 
   async function writeFileToAzure(containerName, fileName, content) {
@@ -265,7 +281,10 @@ function findDescription(targetDescription) {
   function hasNextPageExtractor() {
     console.log("hasNextPageExtractor", totalPagesExtractor, 'total pages, currently on page', curPageExtractor as number + 1);
     if (!totalPagesExtractor) return false
-    return curPageExtractor < totalPagesExtractor || curPageExtractor === offsetOverrideEnd;
+    if (curPageExtractor <= offsetOverrideEnd) {
+      console.log(`offsetOverrideEnd :: `, offsetOverrideEnd);
+    }
+    return curPageExtractor < totalPagesExtractor || curPageExtractor <= offsetOverrideEnd;
   }
 
   async function filterExtractor(filterFull) {
@@ -376,7 +395,7 @@ function findDescription(targetDescription) {
     console.log(`starting at filter index ${startAtFilterIndex}`);
   }
   try {
-    for (let i = startAtFilterIndex as number || 0; i < (endAtFilterIndex as number || filterConfig.documentTypes.length); i++) {
+    for (let i = startAtFilterIndex as number || 0; i <= (endAtFilterIndex as number || filterConfig.documentTypes.length); i++) {
       const cur = filterConfig.documentTypes[i]
       if (filterConfig[cur] && filterConfig[cur].length > 0) {
         if (config.oneShot) {
@@ -408,18 +427,18 @@ function findDescription(targetDescription) {
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
 }({
-  startAtFilterIndex: argv[2] || 0,
-  startAtPageIndex: argv[3] || 0,
-  offsetOverride: argv[4] || 0,
-  itemOnPageOverride: argv[5] || 0,
-  endAtFilterIndex: argv[6] || 0,
-  endAtPageIndex: argv[7] || 0,
-  offsetOverrideEnd: argv[8] || 0,
-  itemOnPageOverrideEnd: argv[9] || 0,
-}), {
+  startAtFilterIndex: argv[2] || null,
+  startAtPageIndex: argv[3] || null,
+  offsetOverride: argv[4] || null,
+  itemOnPageOverride: argv[5] || null,
+  endAtFilterIndex: argv[6] || null,
+  endAtPageIndex: argv[7] || null,
+  offsetOverrideEnd: argv[8] || null,
+  itemOnPageOverrideEnd: argv[9] || null,
+}, {
   // }((argv[2] || 0), (argv[3] || 0), (argv[4] || 0), (argv[5] || 0), (argv[6] || 0), (argv[7] || 0), (argv[8] || 0), (argv[9] || 0), {
-  oneShot: true,
-});
+  oneShot: argv[10] === "true" ? true : false || false,
+}));
 // 51, 7, 0
 // startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
 // offsetOverride = for special cases, start at a specific offset

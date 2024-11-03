@@ -11,11 +11,16 @@
       // The path to a JavaScript or TypeScript file to run.
       "program": "${file}",
       // The arguments to pass to the program, if any.
-      "args": [
-        "51",
-        "7",
-        "2",
-        "1"
+      "args": [ // these count up for indexes, but down on the page items (last numeric param)
+        "51", // filter index
+        "7",  // sub filter index or sub index of special case
+        "0",  // offset pagination
+        "1",  // start at this item on page
+        "51", // end at filter index (null for contiguous)  
+        "7",  // end at sub filter index (null for contiguous)
+        "0",  // end at offset pagination (null for contiguous)
+        "0" , // end at item on page (null for contiguous)
+        "true" // one shot
       ],
       // The working directory of the program.
       "cwd": "${workspaceFolder}",
