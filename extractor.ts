@@ -31,12 +31,17 @@ function findDescription(targetDescription) {
   return null;
 }
 
-(async function BigTexas(startAtFilterIndex, startAtPageIndex, offsetOverride, itemOnPageOverride, config = { oneShot: false }) {
+(async function BigTexas({ startAtFilterIndex, startAtPageIndex, offsetOverride, itemOnPageOverride, endAtFilterIndex, endAtPageIndex, offsetOverrideEnd, itemOnPageOverrideEnd }: any, config = { oneShot: false }) {
   // convert args to numbers
   startAtFilterIndex = parseInt(startAtFilterIndex as string);
   startAtPageIndex = parseInt(startAtPageIndex as string);
   offsetOverride = parseInt(offsetOverride as string);
   itemOnPageOverride = parseInt(itemOnPageOverride as string);
+
+  endAtFilterIndex = parseInt(endAtFilterIndex as string);
+  endAtPageIndex = parseInt(endAtPageIndex as string);
+  offsetOverrideEnd = parseInt(offsetOverrideEnd as string);
+  itemOnPageOverrideEnd = parseInt(itemOnPageOverrideEnd as string);
 
   const targetUrl = "https://reeves.tx.publicsearch.us";
   const targetDepartment = "RP";
@@ -123,7 +128,7 @@ function findDescription(targetDescription) {
     maxResultsExtractor = parseInt(maxResultsText.split('of')[1].split('results')[0].replace(/,/g, '').trim());
     totalPagesExtractor = Math.ceil(maxResultsExtractor / pageSize);
     curPageExtractor = offsetOverrideStart || curPageExtractor; // either override or start at 0
-
+    // check if we need to go to the next page, and if we are at the end of the override range
     if (hasNextPageExtractor()) {
       curPageExtractor++;
       await driver.sleep(2000 + Math.random() * 1000);
@@ -260,7 +265,7 @@ function findDescription(targetDescription) {
   function hasNextPageExtractor() {
     console.log("hasNextPageExtractor", totalPagesExtractor, 'total pages, currently on page', curPageExtractor as number + 1);
     if (!totalPagesExtractor) return false
-    return curPageExtractor < totalPagesExtractor;
+    return curPageExtractor < totalPagesExtractor || curPageExtractor === offsetOverrideEnd;
   }
 
   async function filterExtractor(filterFull) {
@@ -371,7 +376,7 @@ function findDescription(targetDescription) {
     console.log(`starting at filter index ${startAtFilterIndex}`);
   }
   try {
-    for (let i = startAtFilterIndex as number || 0; i < filterConfig.documentTypes.length; i++) {
+    for (let i = startAtFilterIndex as number || 0; i < (endAtFilterIndex as number || filterConfig.documentTypes.length); i++) {
       const cur = filterConfig.documentTypes[i]
       if (filterConfig[cur] && filterConfig[cur].length > 0) {
         if (config.oneShot) {
@@ -382,9 +387,9 @@ function findDescription(targetDescription) {
           console.log("Special Case: targetUrl ", specialTargetUrl);
         } else {
           console.log("Multi Shot Mode");
-          for (let j = startAtPageIndex as number; j < filterConfig[cur].length; j++) {
+          for (let j = startAtPageIndex as number; j < (endAtPageIndex as number || filterConfig[cur].length); j++) {
             const specialTargetUrl = filterConfig[cur][j];
-            await pageExtractor(specialTargetUrl, offsetOverride as number);
+            await pageExtractor(specialTargetUrl, offsetOverride as number, itemOnPageOverride as number);
             offsetOverride = 0; // reset for rest of list
             console.log("Special Case: targetUrl ", specialTargetUrl);
           }
@@ -402,9 +407,19 @@ function findDescription(targetDescription) {
     console.log(`time end: ${new Date().toISOString()}`);
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
-}((argv[2] || 0), (argv[3] || 0), (argv[4] || 0), (argv[5] || 0), {
+}({
+  startAtFilterIndex: argv[2] || 0,
+  startAtPageIndex: argv[3] || 0,
+  offsetOverride: argv[4] || 0,
+  itemOnPageOverride: argv[5] || 0,
+  endAtFilterIndex: argv[6] || 0,
+  endAtPageIndex: argv[7] || 0,
+  offsetOverrideEnd: argv[8] || 0,
+  itemOnPageOverrideEnd: argv[9] || 0,
+}), {
+  // }((argv[2] || 0), (argv[3] || 0), (argv[4] || 0), (argv[5] || 0), (argv[6] || 0), (argv[7] || 0), (argv[8] || 0), (argv[9] || 0), {
   oneShot: true,
-}));
+});
 // 51, 7, 0
 // startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
 // offsetOverride = for special cases, start at a specific offset

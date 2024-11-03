@@ -1,0 +1,5 @@
+{
+    "printWidth": 80, // Set maximum line length to 80 characters
+    "singleQuote": true,
+    "trailingComma": "es5"
+}
