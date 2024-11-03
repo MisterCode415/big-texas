@@ -13,6 +13,21 @@ dotenv.config();
 
 console.log('argv ', argv);
 
+// parse args key=value
+const args = argv.slice(2).map(arg => arg.split('='));
+console.log('args ', args);
+// assign args to variables
+const _startAtFilterIndex = args.find(arg => arg[0] === 'startAtFilterIndex')?.[1];
+const _startAtPageIndex = args.find(arg => arg[0] === 'startAtPageIndex')?.[1];
+const _offsetOverride = args.find(arg => arg[0] === 'offsetOverride')?.[1];
+const _itemOnPageOverride = args.find(arg => arg[0] === 'itemOnPageOverride')?.[1];
+
+const _endAtFilterIndex = args.find(arg => arg[0] === 'endAtFilterIndex')?.[1];
+const _endAtPageIndex = args.find(arg => arg[0] === 'endAtPageIndex')?.[1];
+const _offsetOverrideEnd = args.find(arg => arg[0] === 'offsetOverrideEnd')?.[1];
+const _itemOnPageOverrideEnd = args.find(arg => arg[0] === 'itemOnPageOverrideEnd')?.[1];
+
+const _oneShot = args.find(arg => arg[0] === 'oneShot')?.[1];
 
 const assetTemplate = `https://reeves.tx.publicsearch.us/files/documents/%internalId%/images/%fileId%_%count%.png`
 
@@ -448,17 +463,17 @@ function findDescription(targetDescription) {
     console.log(`time elapsed: ${new Date().getTime() - startTime.getTime()}ms, ${Math.floor((new Date().getTime() - startTime.getTime()) / 60000)} minutes, ${Math.floor((new Date().getTime() - startTime.getTime()) / 3600000)} hours`);
   }
 }({
-  startAtFilterIndex: argv[2] || null,
-  startAtPageIndex: argv[3] || null,
-  offsetOverride: argv[4] || null,
-  itemOnPageOverride: argv[5] || null,
-  endAtFilterIndex: argv[6] || null,
-  endAtPageIndex: argv[7] || null,
-  offsetOverrideEnd: argv[8] || null,
-  itemOnPageOverrideEnd: argv[9] || null,
+  startAtFilterIndex: _startAtFilterIndex || null,
+  startAtPageIndex: _startAtPageIndex || null,
+  offsetOverride: _offsetOverride || null,
+  itemOnPageOverride: _itemOnPageOverride || null,
+  endAtFilterIndex: _endAtFilterIndex || null,
+  endAtPageIndex: _endAtPageIndex || null,
+  offsetOverrideEnd: _offsetOverrideEnd || null,
+  itemOnPageOverrideEnd: _itemOnPageOverrideEnd || null,
 }, {
   // }((argv[2] || 0), (argv[3] || 0), (argv[4] || 0), (argv[5] || 0), (argv[6] || 0), (argv[7] || 0), (argv[8] || 0), (argv[9] || 0), {
-  oneShot: argv[10] === "true" ? true : false || false,
+  oneShot: _oneShot === "true" ? true : false || false,
 }));
 // 51, 7, 0
 // startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
