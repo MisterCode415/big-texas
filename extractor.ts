@@ -124,7 +124,7 @@ function findDescription(targetDescription) {
     }
   }
 
-  async function pageExtractor(url, offsetOverrideStart = null, itemOnPageOverrideStart = null) {
+  async function pageExtractor(url) {
     await driver.sleep(2000 + Math.random() * 1000);
     // get crawl stats from first page
     await driver.get(url + '&offset=0', { timeout: 60000 }); // first 
@@ -140,13 +140,25 @@ function findDescription(targetDescription) {
     // we want max results from page 1 either way...
     maxResultsExtractor = parseInt(maxResultsText.split('of')[1].split('results')[0].replace(/,/g, '').trim());
     totalPagesExtractor = Math.ceil(maxResultsExtractor / pageSize);
-    curPageExtractor = offsetOverrideStart || curPageExtractor; // either override or start at 0
+    curPageExtractor = offsetOverride || curPageExtractor; // either override or start at 0
+    // once this is set kill the offsetOverride
+    offsetOverride = null;
+
     // check if we need to go to the next page, and if we are at the end of the override range
     if (hasNextPageExtractor()) {
       curPageExtractor++;
       await driver.sleep(2000 + Math.random() * 1000);
-      await getNextPageExtractor(url, curPageExtractor, itemOnPageOverrideStart || 0);
-      return await pageExtractor(url, null, null);
+      await getNextPageExtractor(url, curPageExtractor, offsetOverride || 0);
+      if (itemOnPageOverrideEnd && curPageExtractor === itemOnPageOverrideEnd) { // are we supposed to stop at a specific page?
+        console.log(`stopping at override page :: `, curPageExtractor);
+        // kill the itemOnPageOverrideEnd
+        itemOnPageOverrideEnd = null; // if we dont it will only start here on every pagination
+
+        return;
+      } else {
+        console.log(`next page :: `, curPageExtractor);
+        return await pageExtractor(url);
+      }
     } else {
       console.log("no more pages for this extractor");
       console.log(`total pages: `, totalPagesExtractor, `current page: `, curPageExtractor);
@@ -156,7 +168,7 @@ function findDescription(targetDescription) {
     }
   }
 
-  async function getNextPageExtractor(url, page, itemOnPageOverrideStart = null) {
+  async function getNextPageExtractor(url, page) {
     await driver.sleep(2000 + Math.random() * 1000);
     if (curPageExtractor > 1) {
       await driver.get(url + '&offset=' + ((page - 1) * pageSize).toString(), { timeout: 10000 });
@@ -171,13 +183,15 @@ function findDescription(targetDescription) {
 
     // wait on final item to load
     await driver.wait(until.elementLocated(By.css(itemCardsSelector + ':last-child')), 60000);
-    if (itemOnPageOverrideStart) {
+    if (null !== itemOnPageOverride) {
       console.log(`overriding item on page to :: `,
-        itemOnPageOverrideStart,
+        itemOnPageOverride,
         ` and ending at ::  `,
         itemOnPageOverrideEnd);
     }
-    for (let j = itemOnPageOverrideStart || itemCards.length - 1; j >= (itemOnPageOverrideEnd) || 0; j--) {
+    const startAt = itemOnPageOverride || itemCards.length - 1; // start at end or specified start
+    const endAt = itemOnPageOverrideEnd || 0; // end at specified end or start
+    for (let j = startAt; j >= endAt; j--) {
       const itemCard = itemCards[j];
       try {
         await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
@@ -259,6 +273,8 @@ function findDescription(targetDescription) {
       await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(nextLeaseBundle, null, 2));
       console.log(`Lease Complete`, internalId, `page`, page, `, items left: `, j);
     }
+    // reset the item on page specifics once the page is done...
+    itemOnPageOverride = null;
     itemOnPageOverrideEnd = null;
   }
 
@@ -281,10 +297,15 @@ function findDescription(targetDescription) {
   function hasNextPageExtractor() {
     console.log("hasNextPageExtractor", totalPagesExtractor, 'total pages, currently on page', curPageExtractor as number + 1);
     if (!totalPagesExtractor) return false
-    if (curPageExtractor <= offsetOverrideEnd) {
-      console.log(`offsetOverrideEnd :: `, offsetOverrideEnd);
+    const final = curPageExtractor < totalPagesExtractor;
+    if (
+      (offsetOverrideEnd && curPageExtractor >= offsetOverrideEnd)
+      && null === itemOnPageOverrideEnd) { // not overriding end page, so its done
+      console.log(`reached override stop at pagination :: `, offsetOverrideEnd);
+      offsetOverrideEnd = null;
+      return false;
     }
-    return curPageExtractor < totalPagesExtractor || curPageExtractor <= offsetOverrideEnd;
+    return final;
   }
 
   async function filterExtractor(filterFull) {
@@ -401,14 +422,14 @@ function findDescription(targetDescription) {
         if (config.oneShot) {
           console.log("One Shot Mode");
           const specialTargetUrl = filterConfig[cur][startAtPageIndex as number].replace('%LIMIT%', limit);
-          await pageExtractor(specialTargetUrl, offsetOverride as number, itemOnPageOverride as number);
+          await pageExtractor(specialTargetUrl);
           offsetOverride = 0; // reset for rest of list
           console.log("Special Case: targetUrl ", specialTargetUrl);
         } else {
           console.log("Multi Shot Mode");
           for (let j = startAtPageIndex as number; j < (endAtPageIndex as number || filterConfig[cur].length); j++) {
             const specialTargetUrl = filterConfig[cur][j];
-            await pageExtractor(specialTargetUrl, offsetOverride as number, itemOnPageOverride as number);
+            await pageExtractor(specialTargetUrl);
             offsetOverride = 0; // reset for rest of list
             console.log("Special Case: targetUrl ", specialTargetUrl);
           }
