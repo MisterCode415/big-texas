@@ -86,10 +86,13 @@ function findDescription(targetDescription) {
   const pageSize = 50;
 
   async function stepScrollFromBottom() {
+
     const steps = await driver.executeScript('return Math.ceil(document.body.scrollHeight / window.innerHeight)');
     const stepHeight = await driver.executeScript('return window.innerHeight');
+    console.log(`steps: `, steps, `stepHeight: `, stepHeight);
     for (let i = steps; i > 0; i--) {
       const nextStep = i * stepHeight;
+      console.log(`nextStep: `, nextStep);
       await driver.executeScript(`window.scrollTo({left:0, top:${nextStep}, behavior:"smooth"});`);
       await driver.sleep(1000 + Math.random() * 1000);
     }
@@ -171,7 +174,6 @@ function findDescription(targetDescription) {
         console.log(`stopping at override page :: `, curPageExtractor);
         // kill the itemOnPageOverrideEnd
         itemOnPageOverrideEnd = null; // if we dont it will only start here on every pagination
-
         return;
       } else {
         console.log(`next page :: `, curPageExtractor);
@@ -191,9 +193,10 @@ function findDescription(targetDescription) {
     if (curPageExtractor > 1) {
       await driver.get(url + '&offset=' + ((page - 1) * pageSize).toString(), { timeout: 10000 });
     }
-    await stepScrollFromBottom();
     const itemCardsSelector = `.result-card`
     await driver.wait(until.elementLocated(By.css(itemCardsSelector)), 10000);
+    await stepScrollFromBottom();
+
     const itemCards = await driver.findElements(By.css(itemCardsSelector));
     // scroll to bottom to load all items
     await driver.executeScript('window.scrollTo({left:0, top:document.body.scrollHeight, behavior:"smooth"});');

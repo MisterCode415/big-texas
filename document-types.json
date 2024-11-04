@@ -163,6 +163,6 @@
         "https://reeves.tx.publicsearch.us/results?_docTypes=OGL1&_recordedYears=2017&department=RP&limit=%LIMIT%&recordedDateRange=18000101%2C20241029&searchOcrText=false&viewType=card&searchType=quickSearch",
         "https://reeves.tx.publicsearch.us/results?_docTypes=OGL1&_recordedYears=2018&department=RP&limit=%LIMIT%&recordedDateRange=18000101%2C20241029&searchOcrText=false&viewType=card&searchType=quickSearch",
         "https://reeves.tx.publicsearch.us/results?_docTypes=OGL1&_recordedYears=2019&department=RP&limit=%LIMIT%&recordedDateRange=18000101%2C20241029&searchOcrText=false&viewType=card&searchType=quickSearch",
-        "https://reeves.tx.publicsearch.us/results?_docTypes=OGL1&_recordedYears=2020&department=RP&limit=%LIMIT%&recordedDateRange=18000101%2C20241029&searchOcrText=false&viewType=card&searchType=quickSearch"
+        "https://reeves.tx.publicsearch.us/results?_docTypes=OGL1&_recordedYears=2020-Present&department=RP&limit=%LIMIT%&recordedDateRange=18000101%2C20241029&searchOcrText=false&viewType=card&searchType=quickSearch"
     ]
 }
