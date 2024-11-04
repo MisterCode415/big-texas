@@ -98,6 +98,10 @@ function findDescription(targetDescription) {
     }
   }
 
+  function makeBaseUrl(filter) {
+    return `${targetUrl}/results?_docTypes=${filter}&_recordedYears=2020-Present&department=${targetDepartment}&limit=${limit}&recordedDateRange=${targetDateRange}&searchOcrText=false&viewType=card&searchType=${targetSearchType}`;
+  }
+
   async function downloadFiles(internalId, fileId, count) {
     for (let i = 1; i <= count; i++) {
       const url = assetTemplate
@@ -439,7 +443,7 @@ function findDescription(targetDescription) {
   try {
     for (let i = startAtFilterIndex as number || 0; i <= (endAtFilterIndex as number || filterConfig.documentTypes.length); i++) {
       const cur = filterConfig.documentTypes[i]
-      if (filterConfig[cur] && filterConfig[cur].length > 0) {
+      if (filterConfig[cur] && filterConfig[cur].length > 0) { // special case to deal w/ the 10k maximum offset limit
         if (config.oneShot) {
           console.log("One Shot Mode");
           const specialTargetUrl = filterConfig[cur][startAtPageIndex as number].replace('%LIMIT%', limit);
@@ -457,7 +461,8 @@ function findDescription(targetDescription) {
         }
       } else {
         console.log("Target Filter ", cur);
-        await filterExtractor(cur);
+        const url = makeBaseUrl(cur);
+        await pageExtractor(url);
       }
     }
   } catch (error) {
