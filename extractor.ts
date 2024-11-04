@@ -143,7 +143,9 @@ function findDescription(targetDescription) {
   async function pageExtractor(url) {
     await driver.sleep(2000 + Math.random() * 1000);
     // get crawl stats from first page
-    await driver.get(url + '&offset=0', { timeout: 60000 }); // first 
+    // const nextUrl = url + '&offset=' + offsetOverride !== null ? offsetOverride : '0';
+    const nextUrl = `${url} &offset=${offsetOverride !== null ? offsetOverride : '0'}`;
+    await driver.get(nextUrl, { timeout: 60000 }); // first 
     const totalResultsSelector = `[data-testid="resultsSummary"] > span:nth-of-type(1)`;
     let maxResultsText;
     try {
@@ -164,7 +166,7 @@ function findDescription(targetDescription) {
     if (hasNextPageExtractor()) {
       curPageExtractor++;
       await driver.sleep(2000 + Math.random() * 1000);
-      await getNextPageExtractor(url, curPageExtractor, offsetOverride || 0);
+      await getNextPageExtractor(url, curPageExtractor);
       if (itemOnPageOverrideEnd && curPageExtractor === itemOnPageOverrideEnd) { // are we supposed to stop at a specific page?
         console.log(`stopping at override page :: `, curPageExtractor);
         // kill the itemOnPageOverrideEnd

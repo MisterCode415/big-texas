@@ -14,11 +14,11 @@
       "args": [ // these count up for indexes, but down on the page items (last numeric param)
         "startAtFilterIndex=51", // filter index
         "startAtPageIndex=7",  // sub filter index or sub index of special case
-        "offsetOverride=",  // offset pagination
-        "itemOnPageOverride=",  // start at this item on page
+        "offsetOverride=18",  // offset pagination
+        "itemOnPageOverride=3",  // start at this item on page
         "endAtFilterIndex=51", // end at filter index (null for contiguous)  
         "endAtPageIndex=8", // end at sub filter index (null for contiguous)
-        "offsetOverrideEnd=", // end at offset pagination (null for contiguous)
+        "offsetOverrideEnd=19", // end at offset pagination (null for contiguous)
         "itemOnPageOverrideEnd=", // end at item on page (null for contiguous)
         "oneShot=true"
       ],
