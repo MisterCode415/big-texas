@@ -28,7 +28,7 @@ const _offsetOverrideEnd = args.find(arg => arg[0] === 'offsetOverrideEnd')?.[1]
 const _itemOnPageOverrideEnd = args.find(arg => arg[0] === 'itemOnPageOverrideEnd')?.[1];
 
 const _oneShot = args.find(arg => arg[0] === 'oneShot')?.[1];
-
+const _runSpecialCase = args.find(arg => arg[0] === 'runSpecialCase')?.[1];
 const assetTemplate = `https://reeves.tx.publicsearch.us/files/documents/%internalId%/images/%fileId%_%count%.png`
 
 function findDescription(targetDescription) {
@@ -55,7 +55,7 @@ function findDescription(targetDescription) {
   endAtPageIndex,
   offsetOverrideEnd,
   itemOnPageOverrideEnd
-}: any, config = { oneShot: false }) {
+}: any, config = { oneShot: false, runSpecialCase: false }) {
   // convert args to numbers
   startAtFilterIndex = determine(startAtFilterIndex)
   startAtPageIndex = determine(startAtPageIndex)
@@ -83,23 +83,22 @@ function findDescription(targetDescription) {
   let maxResultsExtractor: number | null = null;
   let totalPages: number | null = null;
   let totalPagesExtractor: number | null = null;
+  let currentFilter: string | null = null;
   const pageSize = 50;
 
   async function stepScrollFromBottom() {
-
     const steps = await driver.executeScript('return Math.ceil(document.body.scrollHeight / window.innerHeight)');
     const stepHeight = await driver.executeScript('return window.innerHeight');
     console.log(`steps: `, steps, `stepHeight: `, stepHeight);
     for (let i = steps; i > 0; i--) {
       const nextStep = i * stepHeight;
-      console.log(`nextStep: `, nextStep);
       await driver.executeScript(`window.scrollTo({left:0, top:${nextStep}, behavior:"smooth"});`);
       await driver.sleep(1000 + Math.random() * 1000);
     }
   }
 
   function makeBaseUrl(filter) {
-    return `${targetUrl}/results?_docTypes=${filter}&_recordedYears=2020-Present&department=${targetDepartment}&limit=${limit}&recordedDateRange=${targetDateRange}&searchOcrText=false&viewType=card&searchType=${targetSearchType}`;
+    return `${targetUrl}/results?_docTypes=${encodeURIComponent(findDescription(filter))}&department=${targetDepartment}&limit=${limit}&recordedDateRange=${targetDateRange}&searchOcrText=false&viewType=card&searchType=${targetSearchType}`;
   }
 
   async function downloadFiles(internalId, fileId, count) {
@@ -185,7 +184,7 @@ function findDescription(targetDescription) {
       }
     } else {
       console.log("no more pages for this extractor");
-      console.log(`total pages: `, totalPagesExtractor, `current page: `, curPageExtractor);
+      console.log(`for filter ${findDescription(currentFilter)} ${curPageExtractor} -> total pages: `, totalPagesExtractor, `current page: `, curPageExtractor);
       // reset curPageExtractor
       curPageExtractor = 0;
       return;
@@ -293,10 +292,12 @@ function findDescription(targetDescription) {
         recordedDate,
         scannedText,
       }
+      await trackPayloadInit(internalId, fileId, documentCount);
       await downloadFiles(internalId, fileId, documentCount);
       await saveMetadata(internalId, nextLeaseBundle);
       await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(nextLeaseBundle, null, 2));
-      console.log(`Lease Complete`, internalId, `page`, page, `, items left: `, j);
+      await trackPayloadComplete(internalId, fileId, documentCount);
+      console.log(`${findDescription(currentFilter)} ${curPageExtractor} Lease Complete`, internalId, `page`, page, `of`, totalPagesExtractor, `, items left: `, j);
     }
     // reset the item on page specifics once the page is done...
     itemOnPageOverride = null;
@@ -333,102 +334,24 @@ function findDescription(targetDescription) {
     return final;
   }
 
-  async function filterExtractor(filterFull) {
-    console.log("new section timeout...", filterFull);
-    await driver.sleep(2000 + Math.random() * 1000);
-
-    // reset page status
-    curPage = 0;
-    maxResults = null;
-    totalPages = null;
-    // get first page to extract stats
-    const filter = findDescription(filterFull)
-    console.log("filter", filter);
-    if (!filter) {
-      throw new Error(`Filter ${filterFull} not found`);
-    }
-    const nextLink = `${targetUrl}/results?department=${targetDepartment}&limit=${limit}&offset=0&searchOcrText=false&viewType=card&searchType=${targetSearchType}&recordedDateRange=${targetDateRange}${filter ? `&_docTypes=${encodeURIComponent(filter)}` : ''}`
-    await driver.get(nextLink, { timeout: 60000 });
-    const totalResultsSelector = `[data-testid="resultsSummary"] > span:nth-of-type(1)`;
-    await driver.wait(until.elementLocated(By.css(totalResultsSelector)), 10000);
-    const maxResultsText = await driver.findElement(By.css(totalResultsSelector)).getText();
-    maxResults = parseInt(maxResultsText.split('of')[1].split('results')[0].replace(/,/g, '').trim());
-    totalPages = Math.ceil(maxResults / pageSize);
-    await driver.sleep(1500 + Math.random() * 1000);
-    await getNextPage(filter, startAtPageIndex as number);
+  async function trackPayloadInit(internalId, fileId, documentCount) {
+    await db.collection('payloads').insertOne({
+      internalId,
+      fileId,
+      documentCount,
+      status: 'init'
+    });
   }
-
-  async function getNextPage(filter, startAtPageIndex = 0) {
-    console.log("getNextPage", filter);
-    if (startAtPageIndex) {
-      curPage = startAtPageIndex as number;
-    }
-    if (curPage as number > 0) {
-      const nextLink = `${targetUrl}/results?department=${targetDepartment}&limit=${limit}&offset=${(curPage as number) * limit}&viewType=card&searchOcrText=false&searchType=${targetSearchType}&recordedDateRange=${targetDateRange}${filter ? `&_docTypes=${encodeURIComponent(filter)}` : ''}`
-      await driver.get(nextLink, { timeout: 60000 });
-      await driver.manage().setTimeouts({ implicit: 500 });
-
-    }
-    try {
-      await driver.wait(until.elementLocated(By.css("#main-content div.a11y-table > table > tbody > tr")), 10000);
-    } catch (error) { // likely bad data double check
-      console.error('NO DATA ON THIS PAGE...', error, `${targetUrl}/results?department=${targetDepartment}&limit=${limit}&offset=${(curPage as number) * limit}&searchOcrText=false&searchType=${targetSearchType}&recordedDateRange=${targetDateRange}${filter ? `&_docTypes=${encodeURIComponent(filter)}` : ''}`);
-      const match = "Sorry about this!"
-      await driver.wait(until.elementLocated(By.css("#content")), 10000);
-      const errorMessage = await driver.findElement(By.css("#content")).getText();
-      if (errorMessage.includes(match)) {
-        return await getNextPage(filter);
-      } else {
-        throw error; // something else went wrong
+  async function trackPayloadComplete(internalId, fileId, documentCount) {
+    await db.collection('payloads').updateOne({
+      internalId,
+      fileId,
+      documentCount
+    }, {
+      $set: {
+        status: 'complete'
       }
-    }
-    console.log("page loaded, ", curPage, '-', totalPages);
-    let results = await driver.findElements(By.css("#main-content div.a11y-table > table > tbody > tr"));
-    let i = 0;
-    const resultBatch = new Array();
-    for (let element of results) {
-      let internalIdRaw = await element.findElement(By.css("td:nth-child(1) input")).getAttribute("id");
-      let grantors = await element.findElement(By.css("td:nth-child(4) span")).getText();
-      let gratees = await element.findElement(By.css("td:nth-child(5) span")).getText();
-      let docType = await element.findElement(By.css("td:nth-child(6) span")).getText();
-      let recordedDate = await element.findElement(By.css("td:nth-child(7) span")).getText();
-      let docNumber = await element.findElement(By.css("td:nth-child(8) span")).getText();
-      let bookVolumePage = await element.findElement(By.css("td:nth-child(9) span")).getText();
-      let legalDescription = await element.findElement(By.css("td:nth-child(10) span")).getText();
-
-      const internalId = internalIdRaw.split('-')[2];
-      const queueItem = {
-        id: curPage as number * pageSize + i,
-        internalId,
-        grantors,
-        gratees,
-        docType,
-        recordedDate,
-        docNumber,
-        bookVolumePage,
-        legalDescription,
-      }
-      resultBatch.push(queueItem);
-      i++;
-    }
-    // save batch
-    await collection.insertMany(resultBatch);
-    await driver.sleep(2000 + Math.random() * 1000);
-
-    if (await hasNextPage()) {
-      return await getNextPage(filter);
-    } else {
-      console.log("no more pages");
-      return;
-    }
-  }
-
-  async function hasNextPage() {
-    if (!maxResults) {
-      return false;
-    }
-    curPage = curPage as number + 1; // done w/ last so increment
-    return (curPage as number * pageSize) < maxResults;
+    });
   }
 
   console.log(`time start: ${new Date().toISOString()}`);
@@ -443,7 +366,12 @@ function findDescription(targetDescription) {
   try {
     for (let i = startAtFilterIndex as number || 0; i <= (endAtFilterIndex as number || filterConfig.documentTypes.length); i++) {
       const cur = filterConfig.documentTypes[i]
+      currentFilter = cur;
       if (filterConfig[cur] && filterConfig[cur].length > 0) { // special case to deal w/ the 10k maximum offset limit
+        if (!config.runSpecialCase) {
+          console.log(`Skipping special case ${cur}`);
+          continue;
+        }
         if (config.oneShot) {
           console.log("One Shot Mode");
           const specialTargetUrl = filterConfig[cur][startAtPageIndex as number].replace('%LIMIT%', limit);
@@ -485,7 +413,10 @@ function findDescription(targetDescription) {
 }, {
   // }((argv[2] || 0), (argv[3] || 0), (argv[4] || 0), (argv[5] || 0), (argv[6] || 0), (argv[7] || 0), (argv[8] || 0), (argv[9] || 0), {
   oneShot: _oneShot === "true" ? true : false || false,
+  runSpecialCase: _runSpecialCase ? _runSpecialCase === "true" ? true : false : true,
 }));
+
+console.log(`running special case: ${_runSpecialCase}`);
 // 51, 7, 0
 // startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
 // offsetOverride = for special cases, start at a specific offset
