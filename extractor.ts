@@ -217,22 +217,7 @@ function findDescription(targetDescription) {
     const endAt = itemOnPageOverrideEnd || 0; // end at specified end or start
     for (let j = startAt; j >= endAt; j--) {
       const itemCard = itemCards[j];
-      try {
-        await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
-      } catch (error) {
-        console.error('NO DATA ON THIS ITEM WAITING...', error);
-        await driver.sleep(1000 + Math.random() * 1000);
-        continue;
-      }
 
-      let internalIdNode;
-      try {
-        internalIdNode = await itemCard.findElement(By.css(`.thumbnail__image`));
-      } catch (error) {
-        console.error('NO DATA ON THIS ITEM NODE...', error);
-        await driver.sleep(1000 + Math.random() * 1000);
-        continue;
-      }
 
       const internalIdRaw = await internalIdNode.getAttribute('src');
       const fileIdPieces = internalIdRaw.split('/');
@@ -292,7 +277,26 @@ function findDescription(targetDescription) {
         recordedDate,
         scannedText,
       }
+
       await trackPayloadInit(internalId, fileId, documentCount);
+
+      try { // make sure the thumbnail injection worked, otherwise leave it incomplete and try again next time
+        await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
+      } catch (error) {
+        console.error('NO DATA ON THIS ITEM WAITING...', error);
+        await driver.sleep(1000 + Math.random() * 1000);
+        continue;
+      }
+
+      let internalIdNode;
+      try {
+        internalIdNode = await itemCard.findElement(By.css(`.thumbnail__image`));
+      } catch (error) {
+        console.error('NO DATA ON THIS ITEM NODE...', error);
+        await driver.sleep(1000 + Math.random() * 1000);
+        continue;
+      }
+
       await downloadFiles(internalId, fileId, documentCount);
       await saveMetadata(internalId, nextLeaseBundle);
       await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(nextLeaseBundle, null, 2));
