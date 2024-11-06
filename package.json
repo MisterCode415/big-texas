@@ -13,6 +13,7 @@
     "@types/node": "^22.8.6",
     "@types/selenium-webdriver": "^4.1.27",
     "axios": "^1.7.7",
+    "clipboardy": "^4.0.0",
     "dotenv": "^16.4.5",
     "mocha": "10.7.3",
     "mongodb": "^6.10.0",

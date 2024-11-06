@@ -1,6 +1,7 @@
 import { By, Builder, Browser, until } from 'selenium-webdriver';
 import { MongoClient } from 'mongodb';
-import filterConfig from './document-types.json';
+import leaseFilterConfig from './document-types.json';
+import allFiltersConfig from './flat-codes.json';
 import fs from 'fs';
 import path from 'path';
 import countyCodes from './county-codes.json';
@@ -368,24 +369,24 @@ function findDescription(targetDescription) {
     console.log(`starting at filter index ${startAtFilterIndex}`);
   }
   try {
-    for (let i = startAtFilterIndex as number || 0; i <= (endAtFilterIndex as number || filterConfig.documentTypes.length); i++) {
-      const cur = filterConfig.documentTypes[i]
+    for (let i = startAtFilterIndex as number || 0; i <= (endAtFilterIndex as number || leaseFilterConfig.documentTypes.length); i++) {
+      const cur = leaseFilterConfig.documentTypes[i]
       currentFilter = cur;
-      if (filterConfig[cur] && filterConfig[cur].length > 0) { // special case to deal w/ the 10k maximum offset limit
+      if (leaseFilterConfig[cur] && leaseFilterConfig[cur].length > 0) { // special case to deal w/ the 10k maximum offset limit
         if (!config.runSpecialCase) {
           console.log(`Skipping special case ${cur}`);
           continue;
         }
         if (config.oneShot) {
           console.log("One Shot Mode");
-          const specialTargetUrl = filterConfig[cur][startAtPageIndex as number].replace('%LIMIT%', limit);
+          const specialTargetUrl = leaseFilterConfig[cur][startAtPageIndex as number].replace('%LIMIT%', limit);
           await pageExtractor(specialTargetUrl);
           offsetOverride = 0; // reset for rest of list
           console.log("Special Case: targetUrl ", specialTargetUrl);
         } else {
           console.log("Multi Shot Mode");
-          for (let j = startAtPageIndex as number; j < (endAtPageIndex as number || filterConfig[cur].length); j++) {
-            const specialTargetUrl = filterConfig[cur][j];
+          for (let j = startAtPageIndex as number; j < (endAtPageIndex as number || leaseFilterConfig[cur].length); j++) {
+            const specialTargetUrl = leaseFilterConfig[cur][j];
             await pageExtractor(specialTargetUrl);
             offsetOverride = 0; // reset for rest of list
             console.log("Special Case: targetUrl ", specialTargetUrl);
