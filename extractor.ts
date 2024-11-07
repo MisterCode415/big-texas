@@ -328,7 +328,7 @@ function findDescription(targetDescription) {
       } catch (error) {
         console.error(`Error generating PDF for ${internalId}:`, error);
       }
-      console.log(`${findDescription(currentFilter)} ${curPageExtractor} Lease Complete`, internalId, `page`, page, `of`, totalPagesExtractor, `, items left: `, j);
+      console.log(`${findDescription(currentFilter) || "N/A"} ${curPageExtractor} Lease Complete`, internalId, `page`, page, `of`, totalPagesExtractor, `, items left: `, j);
     }
     // reset the item on page specifics once the page is done...
     itemOnPageOverride = null;
