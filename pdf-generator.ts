@@ -12,7 +12,7 @@ export class PDFGenerator {
     private jsonToText(json: Record<string, any>): string {
         let text = '';
         for (const [key, value] of Object.entries(json)) {
-            text += `${key}: ${value}\n\n\n`;
+            text += `${key.replace(/[^\x20-\x7E]/g, '')}: ${value.replace(/[^\x20-\x7E]/g, '')}\n\n\n`;
         }
         return text;
     }
@@ -27,7 +27,7 @@ export class PDFGenerator {
         for (let i = 0; i < keys.length; i++) {
             // Pad the key for alignment
             const paddedKey = keys[i].padEnd(maxKeyLength, ' ');
-            table += `${paddedKey} : ${values[i]}\n\n\n`;
+            table += `${paddedKey} : ${values[i]}\n\n`;
         }
         return table;
     }
@@ -35,27 +35,27 @@ export class PDFGenerator {
         const pdfDoc = await PDFDocument.create();
 
         // add a new page for the metadata to the pdf
-        const metadataPage = pdfDoc.addPage([2378, 1500]);
+        // const metadataPage = pdfDoc.addPage([2378, 1500]);
 
-        // Set initial y position
-        let yPosition = 1400; // Start near the top of the page
+        // // Set initial y position
+        // let yPosition = 1400; // Start near the top of the page
 
-        metadataPage.drawText(internalId, {
-            x: 50,
-            y: yPosition,
-            size: 65,
-            color: rgb(0, 0, 0),
-        });
+        // metadataPage.drawText(internalId, {
+        //     x: 50,
+        //     y: yPosition,
+        //     size: 65,
+        //     color: rgb(0, 0, 0),
+        // });
 
-        // Update y position for the next text
-        yPosition -= 110; // Move down for the next line
+        // // Update y position for the next text
+        // yPosition -= 110; // Move down for the next line
 
-        metadataPage.drawText(this.jsonToText(JSON.parse(nextLeaseBundle)), {
-            x: 50,
-            y: yPosition,
-            size: 45,
-            color: rgb(0, 0, 0),
-        });
+        // metadataPage.drawText(this.jsonToText(JSON.parse(nextLeaseBundle)), {
+        //     x: 50,
+        //     y: yPosition,
+        //     size: 45,
+        //     color: rgb(0, 0, 0),
+        // });
 
         // // Update y position for the next text
         // yPosition -= 15; // Move down for the next line

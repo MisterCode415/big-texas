@@ -321,7 +321,7 @@ function findDescription(targetDescription) {
       let nextPDF;
       try {
         nextPDF = await new PDFGenerator().generatePDF(internalId, fileSet, JSON.stringify(nextLeaseBundle, null, 2));
-        await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.pdf`, nextPDF);
+        await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/DOC-${internalId}.pdf`, nextPDF);
         await trackPayloadComplete(internalId, fileId, documentCount);
       } catch (error) {
         console.error(`Error generating PDF for ${internalId}:`, error);
