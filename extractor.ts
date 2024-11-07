@@ -8,6 +8,7 @@ import countyCodes from './county-codes.json';
 import fetch from 'node-fetch';
 import { argv } from 'process';
 import { BlobServiceClient } from '@azure/storage-blob';
+import { PDFGenerator } from './pdf-generator';
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -98,11 +99,23 @@ function findDescription(targetDescription) {
     }
   }
 
+  async function scrollUpAndDown() {
+    await driver.executeScript(`window.scrollTo({left:0, top:0, behavior:"smooth"});`);
+    await driver.sleep(1000 + Math.random() * 1000);
+    await driver.executeScript(`window.scrollTo({left:0, top:document.body.scrollHeight/2, behavior:"smooth"});`);
+    await driver.sleep(1000 + Math.random() * 1000);
+    await driver.executeScript(`window.scrollTo({left:0, top:document.body.scrollHeight, behavior:"smooth"});`);
+    await driver.sleep(1000 + Math.random() * 1000);
+    await driver.executeScript(`window.scrollTo({left:0, top:document.body.scrollHeight/2, behavior:"smooth"});`);
+    await driver.sleep(1000 + Math.random() * 1000);
+    await driver.executeScript(`window.scrollTo({left:0, top:0, behavior:"smooth"});`);
+  }
   function makeBaseUrl(filter) {
     return `${targetUrl}/results?_docTypes=${encodeURIComponent(findDescription(filter))}&department=${targetDepartment}&limit=${limit}&recordedDateRange=${targetDateRange}&searchOcrText=false&viewType=card&searchType=${targetSearchType}`;
   }
 
   async function downloadFiles(internalId, fileId, count) {
+    const fileSet = [];
     for (let i = 1; i <= count; i++) {
       const url = assetTemplate
         .replace('%internalId%', internalId)
@@ -136,7 +149,8 @@ function findDescription(targetDescription) {
 
       try {
         const response = await fetch(url, { headers });
-        const buffer = await response.buffer();
+        const buffer: Buffer = await response.buffer();
+        fileSet.push(buffer);
         fs.writeFileSync(savePath, buffer);
         await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${fileId}_${i}.png`, buffer);
       } catch (error) {
@@ -145,6 +159,7 @@ function findDescription(targetDescription) {
       await driver.sleep(250 + Math.random() * 1000);
     }
     console.log(`Downloaded ${count} files for ${internalId} ${fileId}`);
+    return fileSet;
   }
 
   async function pageExtractor(url) {
@@ -199,7 +214,9 @@ function findDescription(targetDescription) {
     }
     const itemCardsSelector = `.result-card`
     await driver.wait(until.elementLocated(By.css(itemCardsSelector)), 10000);
+
     await stepScrollFromBottom();
+    await scrollUpAndDown();
 
     const itemCards = await driver.findElements(By.css(itemCardsSelector));
     // scroll to bottom to load all items
@@ -219,6 +236,22 @@ function findDescription(targetDescription) {
     for (let j = startAt; j >= endAt; j--) {
       const itemCard = itemCards[j];
 
+      try { // make sure the thumbnail injection worked, otherwise leave it incomplete and try again next time
+        await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
+      } catch (error) {
+        console.error('NO DATA ON THIS ITEM WAITING...', error);
+        await driver.sleep(1000 + Math.random() * 1000);
+        continue;
+      }
+
+      let internalIdNode;
+      try {
+        internalIdNode = await itemCard.findElement(By.css(`.thumbnail__image`));
+      } catch (error) {
+        console.error('NO DATA ON THIS ITEM NODE...', error);
+        await driver.sleep(1000 + Math.random() * 1000);
+        continue;
+      }
 
       const internalIdRaw = await internalIdNode.getAttribute('src');
       const fileIdPieces = internalIdRaw.split('/');
@@ -281,27 +314,18 @@ function findDescription(targetDescription) {
 
       await trackPayloadInit(internalId, fileId, documentCount);
 
-      try { // make sure the thumbnail injection worked, otherwise leave it incomplete and try again next time
-        await driver.wait(until.elementLocated(By.css(`.thumbnail__image`)), 10000);
-      } catch (error) {
-        console.error('NO DATA ON THIS ITEM WAITING...', error);
-        await driver.sleep(1000 + Math.random() * 1000);
-        continue;
-      }
-
-      let internalIdNode;
-      try {
-        internalIdNode = await itemCard.findElement(By.css(`.thumbnail__image`));
-      } catch (error) {
-        console.error('NO DATA ON THIS ITEM NODE...', error);
-        await driver.sleep(1000 + Math.random() * 1000);
-        continue;
-      }
-
-      await downloadFiles(internalId, fileId, documentCount);
+      const fileSet = await downloadFiles(internalId, fileId, documentCount);
       await saveMetadata(internalId, nextLeaseBundle);
       await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(nextLeaseBundle, null, 2));
-      await trackPayloadComplete(internalId, fileId, documentCount);
+
+      let nextPDF;
+      try {
+        nextPDF = await new PDFGenerator().generatePDF(internalId, fileSet, JSON.stringify(nextLeaseBundle, null, 2));
+        await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.pdf`, nextPDF);
+        await trackPayloadComplete(internalId, fileId, documentCount);
+      } catch (error) {
+        console.error(`Error generating PDF for ${internalId}:`, error);
+      }
       console.log(`${findDescription(currentFilter)} ${curPageExtractor} Lease Complete`, internalId, `page`, page, `of`, totalPagesExtractor, `, items left: `, j);
     }
     // reset the item on page specifics once the page is done...
@@ -369,24 +393,24 @@ function findDescription(targetDescription) {
     console.log(`starting at filter index ${startAtFilterIndex}`);
   }
   try {
-    for (let i = startAtFilterIndex as number || 0; i <= (endAtFilterIndex as number || leaseFilterConfig.documentTypes.length); i++) {
-      const cur = leaseFilterConfig.documentTypes[i]
+    for (let i = startAtFilterIndex as number || 0; i <= (endAtFilterIndex as number || allFiltersConfig.documentTypes.length); i++) {
+      const cur = allFiltersConfig.documentTypes[i]
       currentFilter = cur;
-      if (leaseFilterConfig[cur] && leaseFilterConfig[cur].length > 0) { // special case to deal w/ the 10k maximum offset limit
+      if (allFiltersConfig[cur] && allFiltersConfig[cur].length > 0) { // special case to deal w/ the 10k maximum offset limit
         if (!config.runSpecialCase) {
           console.log(`Skipping special case ${cur}`);
           continue;
         }
         if (config.oneShot) {
           console.log("One Shot Mode");
-          const specialTargetUrl = leaseFilterConfig[cur][startAtPageIndex as number].replace('%LIMIT%', limit);
+          const specialTargetUrl = allFiltersConfig[cur][startAtPageIndex as number].replace('%LIMIT%', limit);
           await pageExtractor(specialTargetUrl);
           offsetOverride = 0; // reset for rest of list
           console.log("Special Case: targetUrl ", specialTargetUrl);
         } else {
           console.log("Multi Shot Mode");
-          for (let j = startAtPageIndex as number; j < (endAtPageIndex as number || leaseFilterConfig[cur].length); j++) {
-            const specialTargetUrl = leaseFilterConfig[cur][j];
+          for (let j = startAtPageIndex as number; j < (endAtPageIndex as number || allFiltersConfig[cur].length); j++) {
+            const specialTargetUrl = allFiltersConfig[cur][j];
             await pageExtractor(specialTargetUrl);
             offsetOverride = 0; // reset for rest of list
             console.log("Special Case: targetUrl ", specialTargetUrl);

@@ -1,7 +1,7 @@
 import codeBase from './county-codes.json';
 import fs from 'fs';
 // Function to flatten the codes and descriptions
-function flattenCodes(codes: any[]): any[] {
+function flattenCodes(codes: any[]): any {
     const flattened = [];
 
     codes.forEach(codeEntry => {
