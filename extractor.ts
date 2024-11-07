@@ -220,6 +220,7 @@ function findDescription(targetDescription) {
 
     const itemCards = await driver.findElements(By.css(itemCardsSelector));
     // scroll to bottom to load all items
+    await driver.executeScript('document.body.style.zoom = "50%"');
     await driver.executeScript('window.scrollTo({left:0, top:document.body.scrollHeight, behavior:"smooth"});');
     await driver.sleep(1000 + Math.random() * 1000);
 
