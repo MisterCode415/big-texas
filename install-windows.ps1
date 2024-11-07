@@ -28,5 +28,7 @@ Install-Software -url "https://dl.google.com/chrome/install/latest/chrome_instal
 # Install Visual Studio Code
 Install-Software -url "https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-user" -installerName "VSCodeSetup.exe" -arguments "/silent"
 
+Install-Software -url "https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.2/Git-2.47.0.2-64-bit.exe" -installerName "Git-2.47.0.2-64-bit.exe" -arguments "/silent"
+
 # Install Bun
-Install-Software -url "https://bun.sh/install" -installerName "bun_install.sh" -arguments "--yes"
+powershell -c "irm bun.sh/install.ps1 | iex"

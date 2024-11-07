@@ -348,7 +348,7 @@ function findDescription(targetDescription) {
     // save to db
     await collection.insertOne(metadata);
     // save json to disk
-    fs.writeFileSync(`${process.env.SAVE_FOLDER}/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(metadata, null, 2));
+    //fs.writeFileSync(`${process.env.SAVE_FOLDER}/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(metadata, null, 2));
   }
 
   function hasNextPageExtractor() {
