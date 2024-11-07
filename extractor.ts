@@ -164,12 +164,12 @@ function findDescription(targetDescription) {
 
   async function pageExtractor(url) {
     await driver.sleep(2000 + Math.random() * 1000);
-    await driver.executeScript('document.body.style.zoom = "50%"');
 
     // get crawl stats from first page
     // const nextUrl = url + '&offset=' + offsetOverride !== null ? offsetOverride : '0';
     const nextUrl = `${url} &offset=${offsetOverride !== null ? offsetOverride : '0'}`;
     await driver.get(nextUrl, { timeout: 60000 }); // first 
+    await driver.executeScript('document.body.style.zoom = "50%"');
     const totalResultsSelector = `[data-testid="resultsSummary"] > span:nth-of-type(1)`;
     let maxResultsText;
     try {
