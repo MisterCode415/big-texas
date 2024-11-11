@@ -373,6 +373,7 @@ function findDescription(targetDescription) {
       status: 'init'
     });
   }
+
   async function trackPayloadComplete(internalId, fileId, documentCount) {
     await db.collection('payloads').updateOne({
       internalId,

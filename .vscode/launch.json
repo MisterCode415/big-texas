@@ -7,21 +7,51 @@
     {
       "type": "bun",
       "request": "launch",
-      "name": "Debug Bun",
+      "name": "Debug Scanner",
       // The path to a JavaScript or TypeScript file to run.
       "program": "${file}",
       // The arguments to pass to the program, if any.
       "args": [ // these count up for indexes, but down on the page items (last numeric param)
-        "startAtFilterIndex=11", // filter index
-        "startAtPageIndex=",  // sub filter index or sub index of special case
-        "offsetOverride=",  // offset pagination
+        "startAtFilterIndex=2881", // filter index
+        "startAtPageIndex=10",  // sub filter index or sub index of special case
+        "offsetOverride=",  // offset pagination (reverse order N -> 0 index)
         "itemOnPageOverride=",  // start at this item on page
-        "endAtFilterIndex=12", // end at filter index (null for contiguous)  
-        "endAtPageIndex=", // end at sub filter index (null for contiguous)
+        "endAtFilterIndex=2881", // end at filter index (null for contiguous)  
+        "endAtPageIndex=11", // end at sub filter index (null for contiguous)
         "offsetOverrideEnd=", // end at offset pagination (null for contiguous)
         "itemOnPageOverrideEnd=", // end at item on page (null for contiguous)
         "oneShot=true",
-        "runSpecialCase=false"
+        "runSpecialCase=true"
+      ],
+      // The working directory of the program.
+      "cwd": "${workspaceFolder}",
+      // The environment variables to pass to the program.
+      "env": {},
+      // If the environment variables should not be inherited from the parent process.
+      "strictEnv": false,
+      // If the program should be run in watch mode.
+      // This is equivalent to passing `--watch` to the `bun` executable.
+      // You can also set this to "hot" to enable hot reloading using `--hot`.
+      "watchMode": false,
+      // If the debugger should stop on the first line of the program.
+      "stopOnEntry": false,
+      // If the debugger should be disabled. (for example, breakpoints will not be hit)
+      "noDebug": false,
+      // The path to the `bun` executable, defaults to your `PATH` environment variable.
+      "runtime": "bun",
+      // The arguments to pass to the `bun` executable, if any.
+      // Unlike `args`, these are passed to the executable itself, not the program.
+      "runtimeArgs": [],
+    },
+    {
+      "type": "bun",
+      "request": "launch",
+      "name": "Debug Backfiller",
+      // The path to a JavaScript or TypeScript file to run.
+      "program": "${file}",
+      // The arguments to pass to the program, if any.
+      "args": [ // these count up for indexes, but down on the page items (last numeric param)
+        "165428555"
       ],
       // The working directory of the program.
       "cwd": "${workspaceFolder}",
@@ -59,6 +89,18 @@
         "<node_internals>/**"
       ],
       "program": "${workspaceFolder}/brute-force-technique-a.js"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Backfill PDFs",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}/check-and-generate.ts",
+      "args": [
+        "165428555"
+      ]
     },
     {
       "type": "node",

@@ -31,7 +31,7 @@ export class PDFGenerator {
         }
         return table;
     }
-    async generatePDF(internalId: string, fileData: Buffer[], nextLeaseBundle: string): Promise<Uint8Array> {
+    async generatePDF(internalId: string, fileData: Buffer[], nextLeaseBundle?: string): Promise<Uint8Array> {
         const pdfDoc = await PDFDocument.create();
 
         // add a new page for the metadata to the pdf
