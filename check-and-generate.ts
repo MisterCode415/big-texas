@@ -97,10 +97,45 @@ async function checkAndGeneratePDF(folderPath: string, containerClient: any, fol
     }
 }
 
+async function countDocs(containerClient: any, basePath: string): Promise<number> {
+    let documentCount = 0;
+    for (let i = 1; i <= 9; i++) {
+        const blobs = containerClient.listBlobsByHierarchy('/', { prefix: `${basePath}${i}/` });
+        for await (const blob of blobs) {
+            console.log(blob.name);
+            documentCount++;
+        }
+    }
+    return documentCount;
+}
+
+async function countPDFs(containerClient: any, basePath: string): Promise<number> {
+    let pdfCount = 0;
+    const blobs = containerClient.listBlobsFlat({ prefix: basePath });
+
+    for await (const blob of blobs) {
+        if (blob.name.endsWith('.pdf')) {
+            pdfCount++;
+            console.log(pdfCount, blob.name);
+        }
+    }
+
+    return pdfCount;
+}
 
 // Example usage
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING; // Replace with your Azure Storage connection string
 const basePath = 'texas/reeves/'; // Base path to start processing
 let startFolder = process.argv[2];
 let hasSkipped = false;
-processFolders(connectionString, basePath, startFolder).catch(console.error);
+
+const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+const containerClient = blobServiceClient.getContainerClient('us-leases'); // Replace with your container name
+
+countDocs(containerClient, basePath).then(count => {
+    console.log(`Total number of Docs: ${count}`);
+}).catch(console.error);
+// countPDFs(containerClient, basePath).then(count => {
+//     console.log(`Total number of PDFs: ${count}`);
+// }).catch(console.error);
+//processFolders(connectionString, basePath, startFolder).catch(console.error);

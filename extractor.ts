@@ -110,6 +110,7 @@ function findDescription(targetDescription) {
     await driver.sleep(1000 + Math.random() * 1000);
     await driver.executeScript(`window.scrollTo({left:0, top:0, behavior:"smooth"});`);
   }
+
   function makeBaseUrl(filter) {
     return `${targetUrl}/results?_docTypes=${encodeURIComponent(findDescription(filter))}&department=${targetDepartment}&limit=${limit}&recordedDateRange=${targetDateRange}&searchOcrText=false&viewType=card&searchType=${targetSearchType}`;
   }

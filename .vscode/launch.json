@@ -12,16 +12,14 @@
       "program": "${file}",
       // The arguments to pass to the program, if any.
       "args": [ // these count up for indexes, but down on the page items (last numeric param)
-        "startAtFilterIndex=2881", // filter index
-        "startAtPageIndex=10",  // sub filter index or sub index of special case
         "offsetOverride=",  // offset pagination (reverse order N -> 0 index)
         "itemOnPageOverride=",  // start at this item on page
-        "endAtFilterIndex=2881", // end at filter index (null for contiguous)  
-        "endAtPageIndex=11", // end at sub filter index (null for contiguous)
         "offsetOverrideEnd=", // end at offset pagination (null for contiguous)
         "itemOnPageOverrideEnd=", // end at item on page (null for contiguous)
-        "oneShot=true",
-        "runSpecialCase=true"
+        "startYear=1990",
+        "startMonth=1",
+        "endYear=1991",
+        "endMonth=02"
       ],
       // The working directory of the program.
       "cwd": "${workspaceFolder}",
