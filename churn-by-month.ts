@@ -96,7 +96,7 @@ if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
         const limit = 250;
 
         for (let year = startYear; year <= endYear; year++) {
-            for (let month = 1; month <= 12; month++) {
+            for (let month = startMonth; month <= 12; month++) {
                 if (year === endYear && month > endMonth) {
                     break; // Stop if we reach the end month of the end year
                 }
@@ -114,6 +114,7 @@ if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
                 // Here you would call your page extraction logic similar to extractor.ts
                 // await pageExtractor(url);
             }
+            startMonth = 1; // if we overrode it, reset it
         }
     }
 
@@ -172,8 +173,8 @@ if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
         const itemCardsSelector = `.result-card`
         await driver.wait(until.elementLocated(By.css(itemCardsSelector)), 10000);
 
-        // await stepScrollFromBottom();
         await scrollUpAndDown();
+        await stepScrollFromBottom();
 
         const itemCards = await driver.findElements(By.css(itemCardsSelector));
         // scroll to bottom to load all items
@@ -271,18 +272,18 @@ if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
 
             await trackPayloadInit(internalId, fileId, documentCount);
 
-            const fileSet = await downloadFiles(internalId, fileId, documentCount);
+            //const fileSet = await downloadFiles(internalId, fileId, documentCount);
             await saveMetadata(internalId, nextLeaseBundle);
             await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(nextLeaseBundle, null, 2));
 
-            let nextPDF;
-            try {
-                nextPDF = await new PDFGenerator().generatePDF(internalId, fileSet, JSON.stringify(nextLeaseBundle, null, 2));
-                await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/DOC-${internalId}.pdf`, nextPDF);
-                await trackPayloadComplete(internalId, fileId, documentCount);
-            } catch (error) {
-                console.error(`Error generating PDF for ${internalId}:`, error);
-            }
+            // let nextPDF;
+            // try {
+            //     nextPDF = await new PDFGenerator().generatePDF(internalId, fileSet, JSON.stringify(nextLeaseBundle, null, 2));
+            //     await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/DOC-${internalId}.pdf`, nextPDF);
+            //     await trackPayloadComplete(internalId, fileId, documentCount);
+            // } catch (error) {
+            //     console.error(`Error generating PDF for ${internalId}:`, error);
+            // }
             console.log(`${curPageExtractor} Lease Complete`, internalId, `page`, page, `of`, totalPagesExtractor, `, items left: `, j);
         }
         // reset the item on page specifics once the page is done...

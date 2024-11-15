@@ -12,10 +12,10 @@
       "program": "${file}",
       // The arguments to pass to the program, if any.
       "args": [ // these count up for indexes, but down on the page items (last numeric param)
-        "offsetOverride=",  // offset pagination (reverse order N -> 0 index)
-        "itemOnPageOverride=",  // start at this item on page
-        "offsetOverrideEnd=", // end at offset pagination (null for contiguous)
-        "itemOnPageOverrideEnd=", // end at item on page (null for contiguous)
+        "offsetOverride=", 
+        "itemOnPageOverride=",
+        "offsetOverrideEnd=",
+        "itemOnPageOverrideEnd=",
         "startYear=1990",
         "startMonth=1",
         "endYear=1991",
