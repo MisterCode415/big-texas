@@ -13,6 +13,8 @@ import { PDFGenerator } from './pdf-generator';
 const dotenv = require('dotenv');
 dotenv.config();
 
+const sortByOptions = ['docType', 'docNumber', 'grantors', 'gratee', 'legalDescription', 'bookVolumePage'];
+
 const args: any = argv.slice(2).map(arg => arg.split('='));
 if (args.length < 4) {
     throw new Error('Missing arguments: startYear, startMonth, endYear, endMonth');
@@ -25,6 +27,7 @@ const _offsetOverride = args.find(arg => arg[0] === 'offsetOverride')?.[1];
 const _itemOnPageOverride = args.find(arg => arg[0] === 'itemOnPageOverride')?.[1];
 const _offsetOverrideEnd = args.find(arg => arg[0] === 'offsetOverrideEnd')?.[1];
 const _itemOnPageOverrideEnd = args.find(arg => arg[0] === 'itemOnPageOverrideEnd')?.[1];
+const _sortByOverride = args.find(arg => arg[0] === 'sortByOverride')?.[1];
 
 if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
     throw new Error('Missing arguments: startYear, startMonth, endYear, endMonth');
@@ -35,6 +38,7 @@ if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
     itemOnPageOverride,
     offsetOverrideEnd,
     itemOnPageOverrideEnd,
+    sortByOverride,
     startYear,
     startMonth,
     endYear,
@@ -44,7 +48,6 @@ if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
     itemOnPageOverride = determine(itemOnPageOverride)
     offsetOverrideEnd = determine(offsetOverrideEnd)
     itemOnPageOverrideEnd = determine(itemOnPageOverrideEnd)
-
     let db;
     let blobServiceClient;
     let curPage = null;
@@ -106,8 +109,11 @@ if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
                 const nextYear = month === 12 ? year + 1 : year; // Increment year if December
                 const endDate = formatDate(nextYear, nextMonth); // Correctly format the end date
                 const targetDateRange = `${startDate},${endDate}`;
-
-                const url = `${targetUrl}?department=${targetDepartment}&limit=${limit}&recordedDateRange=${targetDateRange}&searchOcrText=false&searchType=quickSearch&viewType=card`;
+                const sortBy = sortByOverride || null;
+                let url = `${targetUrl}?department=${targetDepartment}&limit=${limit}&recordedDateRange=${targetDateRange}&searchOcrText=false&searchType=quickSearch&viewType=card`;
+                if (sortBy) {
+                    url += `&=${sortBy}`;
+                }
                 console.log(`Processing URL: ${url}`);
                 await pageExtractor(url);
                 offsetOverride = 0; // reset for rest of list
@@ -330,6 +336,22 @@ if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
         });
     }
 
+    // async function trackPayloadInit(internalId, fileId, documentCount) {
+    //     await db.collection('payloads').updateOne({
+    //         internalId,
+    //         fileId,
+    //     }, {
+    //         $set: {
+    //             status: 'init',
+    //             internalId,
+    //             fileId,
+    //             documentCount
+    //         }
+    //     }, {
+    //         upsert: true
+    //     });
+    // }
+
     async function trackPayloadComplete(internalId, fileId, documentCount) {
         await db.collection('payloads').updateOne({
             internalId,
@@ -409,6 +431,7 @@ if (!_startYear || !_startMonth || !_endYear || !_endMonth) {
     itemOnPageOverride: _itemOnPageOverride || null,
     offsetOverrideEnd: _offsetOverrideEnd || null,
     itemOnPageOverrideEnd: _itemOnPageOverrideEnd || null,
+    sortByOverride: _sortByOverride || null,
     startYear: _startYear,
     startMonth: _startMonth,
     endYear: _endYear,

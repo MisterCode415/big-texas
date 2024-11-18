@@ -347,7 +347,7 @@ function findDescription(targetDescription) {
 
   async function saveMetadata(internalId, metadata) {
     // save to db
-    await collection.insertOne(metadata);
+    await collection.insertOne({ ...internalId, ...metadata });
     // save json to disk
     //fs.writeFileSync(`${process.env.SAVE_FOLDER}/${internalId.toString()[0]}/${internalId}/${internalId}.json`, JSON.stringify(metadata, null, 2));
   }
@@ -449,7 +449,7 @@ function findDescription(targetDescription) {
   runSpecialCase: _runSpecialCase ? _runSpecialCase === "true" ? true : false : true,
 }));
 
-console.log(`running special case: ${_runSpecialCase}`);
+// console.log(`running special case: ${_runSpecialCase}`);
 // 51, 7, 0
 // startAtFilterIndex = from the start of the list in any case, startAtPageIndex = start at initial offset or skip down the list of a special case
 // offsetOverride = for special cases, start at a specific offset

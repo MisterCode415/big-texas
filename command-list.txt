@@ -1,6 +1,0 @@
-bun run churn-by-month.ts offsetOverride= itemOnPageOverride= offsetOverrideEnd= itemOnPageOverrideEnd= startYear=2018 startMonth=1 endYear=2019 endMonth=1
-bun run churn-by-month.ts offsetOverride= itemOnPageOverride= offsetOverrideEnd= itemOnPageOverrideEnd= startYear=2019 startMonth=1 endYear=2020 endMonth=1
-bun run churn-by-month.ts offsetOverride= itemOnPageOverride= offsetOverrideEnd= itemOnPageOverrideEnd= startYear=2020 startMonth=1 endYear=2021 endMonth=1
-bun run churn-by-month.ts offsetOverride= itemOnPageOverride= offsetOverrideEnd= itemOnPageOverrideEnd= startYear=2021 startMonth=1 endYear=2022 endMonth=1
-bun run churn-by-month.ts offsetOverride= itemOnPageOverride= offsetOverrideEnd= itemOnPageOverrideEnd= startYear=2022 startMonth=1 endYear=2023 endMonth=1
-bun run churn-by-month.ts offsetOverride= itemOnPageOverride= offsetOverrideEnd= itemOnPageOverrideEnd= startYear=2023 startMonth=1 endYear=2024 endMonth=1

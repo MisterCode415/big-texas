@@ -12,14 +12,15 @@
       "program": "${file}",
       // The arguments to pass to the program, if any.
       "args": [ // these count up for indexes, but down on the page items (last numeric param)
-        "offsetOverride=", 
-        "itemOnPageOverride=",
-        "offsetOverrideEnd=",
-        "itemOnPageOverrideEnd=",
-        "startYear=1990",
-        "startMonth=1",
-        "endYear=1991",
-        "endMonth=02"
+        "mode=count-by-year"
+        //"offsetOverride=", 
+        //"itemOnPageOverride=",
+        //"offsetOverrideEnd=",
+        //"itemOnPageOverrideEnd=",
+        //"startYear=1990",
+        //"startMonth=1",
+        //"endYear=1991",
+        //"endMonth=02"
       ],
       // The working directory of the program.
       "cwd": "${workspaceFolder}",

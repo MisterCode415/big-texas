@@ -1,5 +1,9 @@
 import { BlobServiceClient } from '@azure/storage-blob';
 import { PDFGenerator } from './pdf-generator'; // Adjust the import path as necessary
+import { argv } from 'process';
+import { MongoClient } from 'mongodb';
+const args: any = argv.slice(2).map(arg => arg.split('='));
+const mode: 'count-folders' | 'count-docs' | 'count-by-year' | 'count-pdfs' = args.find(arg => arg[0] === 'mode')?.[1];
 
 async function processFolders(connectionString: string, basePath: string, startFolder?: string) {
     const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
@@ -123,6 +127,50 @@ async function countPDFs(containerClient: any, basePath: string): Promise<number
     return pdfCount;
 }
 
+async function countByYear(containerClient: any, databaseClient: MongoClient, basePath: string): Promise<Map<string, number>> {
+    // flatten the blobs and count the years
+    const blobs = containerClient.listBlobsFlat({ prefix: basePath });
+    const datesToYears = new Map<string, number>();
+    let i = 1;
+    for await (const blob of blobs) {
+        if (blob.name.endsWith('.json')) {
+            const blobClient = containerClient.getBlobClient(blob.name);
+            const blobParts = blob.name.split('/');
+            const folder = blobParts[blobParts.length - 2];
+            const downloadResponse = await blobClient.download();
+            const jsonData = await streamToBuffer(downloadResponse.readableStreamBody);
+            const metaBlock = JSON.parse(jsonData.toString());
+            // write to mongodb
+            const database = databaseClient.db('big-texas');
+            const collection = database.collection('leases-meta');
+            let hash = metaBlock.instrumentDate.split('/');
+            hash = hash[2] + '-' + hash[0] + '-' + hash[1];
+            const receipt = await collection.updateOne({
+                fileId: metaBlock.fileId, internalId: folder
+            }, {
+                $set: {
+                    ...metaBlock,
+                    instrumentDate: hash
+                }
+            }, {
+                upsert: true
+            });
+            if (receipt.upsertedId) {
+                if (datesToYears.has(hash)) {
+                    datesToYears.set(hash, datesToYears.get(hash) + 1);
+                } else {
+                    datesToYears.set(hash, 1);
+                }
+            }
+            i++;
+            if (i % 20 === 0) {
+                console.log(`Processed ${i} files`);
+            }
+        }
+    }
+    return datesToYears;
+}
+
 // Example usage
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING; // Replace with your Azure Storage connection string
 const basePath = 'texas/reeves/'; // Base path to start processing
@@ -132,10 +180,33 @@ let hasSkipped = false;
 const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
 const containerClient = blobServiceClient.getContainerClient('us-leases'); // Replace with your container name
 
-countDocs(containerClient, basePath).then(count => {
-    console.log(`Total number of Docs: ${count}`);
-}).catch(console.error);
-// countPDFs(containerClient, basePath).then(count => {
-//     console.log(`Total number of PDFs: ${count}`);
-// }).catch(console.error);
-//processFolders(connectionString, basePath, startFolder).catch(console.error);
+async function main() {
+    switch (mode) {
+        case 'count-folders':
+            processFolders(connectionString, basePath, startFolder).catch(console.error);
+            break;
+        case 'count-docs':
+            countDocs(containerClient, basePath).then(count => {
+                console.log(`Total number of Docs: ${count}`);
+            }).catch(console.error);
+            break;
+        case 'count-pdfs':
+            countPDFs(containerClient, basePath).then(count => {
+                console.log(`Total number of PDFs: ${count}`);
+            }).catch(console.error);
+            break;
+        case 'count-by-year':
+            const databaseClient = new MongoClient(process.env.MONGODB_URI);
+            for (let i = 1; i <= 9; i++) {
+                await countByYear(containerClient, databaseClient, `${basePath}${i}/`).then(countStats => {
+                    console.log(`Total number of Docs by Year: `, countStats);
+                }).catch(console.error);
+            }
+            databaseClient.close();
+            break;
+        default:
+            throw new Error('Invalid mode');
+    }
+}
+
+main().catch(console.error);
