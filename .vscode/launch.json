@@ -12,7 +12,7 @@
       "program": "${file}",
       // The arguments to pass to the program, if any.
       "args": [ // these count up for indexes, but down on the page items (last numeric param)
-        "mode=count-by-year"
+        "mode=generate-pdfs"
         //"offsetOverride=", 
         //"itemOnPageOverride=",
         //"offsetOverrideEnd=",
