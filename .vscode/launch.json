@@ -7,12 +7,13 @@
     {
       "type": "bun",
       "request": "launch",
-      "name": "Debug Scanner",
+      "name": "Debug Bun Current",
       // The path to a JavaScript or TypeScript file to run.
       "program": "${file}",
       // The arguments to pass to the program, if any.
       "args": [ // these count up for indexes, but down on the page items (last numeric param)
-        "mode=generate-pdfs"
+        "mode=generate-pdfs",
+        "startAtBase=2",
         //"offsetOverride=", 
         //"itemOnPageOverride=",
         //"offsetOverrideEnd=",

@@ -11,11 +11,14 @@ const assetTemplate = `https://reeves.tx.publicsearch.us/files/documents/%intern
 const args: any = argv.slice(2).map(arg => arg.split('='));
 const _startFolder = args.find(arg => arg[0] === 'startFolder')?.[1];
 const _mode = args.find(arg => arg[0] === 'mode')?.[1];
+const _skipTo = args.find(arg => arg[0] === 'skipTo')?.[1];
+const _startAtBase = args.find(arg => arg[0] === 'startAtBase')?.[1];
 let globalCount = 0;
 type Options = {
     mode: 'generate-pdfs' | 'count-docs' | 'count-by-year' | 'count-pdfs'
     skipTo?: number,
     startFolder?: string,
+    startAtBase?: string,
 }
 
 async function writeFileToAzure(containerName, fileName, content) {
@@ -62,7 +65,7 @@ async function downloadFiles(internalId, fileId, count) {
             const buffer: Buffer = await response.buffer();
             fileSet.push(buffer);
             // fs.writeFileSync(savePath, buffer);
-            await writeFileToAzure('us-leases', `texas/reeves/${internalId.toString()[0]}/${internalId}/${fileId}_${i}.png`, buffer);
+            await writeFileToAzure('us-leases', `C/${internalId.toString()[0]}/${internalId}/${fileId}_${i}.png`, buffer);
         } catch (error) {
             console.error(`Failed to download ${url}:`, error);
         }
@@ -73,15 +76,12 @@ async function downloadFiles(internalId, fileId, count) {
     return fileSet;
 }
 
-async function processFolders(connectionString: string, basePath: string, startFolder?: string) {
+async function processFolders(connectionString: string, basePath: string, startAtBase: string = 0, startFolder?: string) {
     const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
     const containerClient = blobServiceClient.getContainerClient('us-leases'); // Replace with your container name
 
-    // Determine the starting digit from the startFolder parameter
-    const startDigit = startFolder ? parseInt(startFolder.charAt(0), 10) : 1;
-
     // Loop through integers from the starting digit to 9
-    for (let i = startDigit; i <= 9; i++) {
+    for (let i = parseInt(startAtBase); i <= 9; i++) {
         const dynamicBasePath = `${basePath}${i}/`; // Construct the path for each integer
         await checkSubFolders(dynamicBasePath, containerClient, startFolder);
     }
@@ -213,7 +213,7 @@ async function countPDFs(containerClient: any, basePath: string): Promise<number
 }
 
 async function countByYear(containerClient: any, databaseClient: MongoClient, basePath: string, options: Options): Promise<Map<string, number> | null> {
-    const blobs = containerClient.listBlobsFlat({ prefix: basePath });
+    const blobs = containerClient.listBlobsFlat({ prefix: basePath + (options.startFolder || '') });
     const datesToYears = new Map<string, number>();
     let i = 1;
     for await (const blob of blobs) {
@@ -275,7 +275,7 @@ const containerClient = blobServiceClient.getContainerClient('us-leases'); // Re
 async function main(options: Options) {
     switch (options.mode) {
         case 'generate-pdfs':
-            processFolders(connectionString, basePath, options.startFolder).catch(console.error);
+            processFolders(connectionString, basePath, options.startAtBase, options.startFolder).catch(console.error);
             break;
         case 'count-docs':
             countDocs(containerClient, basePath).then(count => {
@@ -301,5 +301,5 @@ async function main(options: Options) {
     }
 }
 
-const options = { startFolder: _startFolder || null, mode: _mode, skipTo: null }
+const options = { startFolder: _startFolder || null, mode: _mode, skipTo: _skipTo || null, startFolder: _startFolder || null, startAtBase: _startAtBase || null }
 main(options).catch(console.error);
