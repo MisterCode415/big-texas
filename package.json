@@ -9,7 +9,10 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@azure/storage-blob": "^12.25.0",
+    "@azure-rest/ai-document-intelligence": "^1.0.0-beta.3",
+    "@azure/core-auth": "^1.9.0",
+    "@azure/logger": "^1.1.4",
+    "@azure/storage-blob": "^12.26.0",
     "@types/node": "^22.8.6",
     "@types/selenium-webdriver": "^4.1.27",
     "axios": "^1.7.7",

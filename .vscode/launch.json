@@ -5,6 +5,17 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Inline TS Debugger",
+      "type": "node",
+      "request": "launch",      
+      "runtimeExecutable": "node",
+      "runtimeArgs": [ "--nolazy", "-r", "ts-node/register/transpile-only"],      
+      "args": [
+        
+      ],
+      "program": "${file}"
+    },
+    {
       "type": "bun",
       "request": "launch",
       "name": "Debug Bun Current",
@@ -12,8 +23,8 @@
       "program": "${file}",
       // The arguments to pass to the program, if any.
       "args": [ // these count up for indexes, but down on the page items (last numeric param)
-        "mode=generate-pdfs",
-        "startAtBase=2",
+        // "mode=generate-pdfs",
+        // "startAtBase=2",
         //"offsetOverride=", 
         //"itemOnPageOverride=",
         //"offsetOverrideEnd=",
