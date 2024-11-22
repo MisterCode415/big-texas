@@ -2,6 +2,7 @@ export function cleanWatermark(text: string, pattern: string) {
     const delimiter = '\n'; // lets inspect each line
     const parts = text.split(delimiter);
     let index = 0;
+    const deleteList: number[] = [];
     for (const part of parts) {
 
         // console.log('part: ', part);
@@ -12,11 +13,11 @@ export function cleanWatermark(text: string, pattern: string) {
         // console.log('someMatchingChars: ', someMatchingChars);
         // console.log('matchingOtherChars: ', matchingOtherChars);
         if (allMatchingChars || (!matchingOtherChars && someMatchingChars)) {
-            parts.splice(index, 1);
+            deleteList.push(index);
         }
         index++;
     }
-    return parts.join(delimiter);
+    return parts.filter((_, index) => !deleteList.includes(index)).join(delimiter);
 }
 // test with
 // console.log('yield: ', cleanWatermark("hello\nREEVES COUNTY CLERK\nworld", "REEVES COUNTY CLERK"));
