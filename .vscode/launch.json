@@ -11,7 +11,7 @@
       "runtimeExecutable": "node",
       "runtimeArgs": [ "--nolazy", "-r", "ts-node/register/transpile-only"],      
       "args": [
-        "limit=10",
+        "limit=41",
         "offset=0",
       ],
       "program": "${file}"
