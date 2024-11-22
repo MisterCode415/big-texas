@@ -103,6 +103,7 @@ async function main(options: { batchSize: string, offset: string }) {
 async function pollUntilDone(client, initialResponse: AnalyzeResultOperationOutput) {
     // start poller with transaction id
     const results: any = [];
+    // @ts-ignore
     const poller = await getLongRunningPoller(client, initialResponse as unknown as AnalyzeResultOperationOutput);
     while (!poller.isDone()) {
         await new Promise(resolve => setTimeout(resolve, 1000));
