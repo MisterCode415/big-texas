@@ -38,7 +38,7 @@ async function downloadFiles(internalId, fileId, count) {
             .replace('%internalId%', internalId)
             .replace('%fileId%', fileId)
             .replace('%count%', i.toString());
-
+        7
         const savePath = `${process.env.SAVE_FOLDER}/${internalId.toString()[0]}/${internalId}/${fileId}_${i}.png`;
         fs.mkdirSync(path.dirname(savePath), { recursive: true });
 
@@ -139,14 +139,25 @@ async function checkAndGeneratePDF(folderPath: string, containerClient: any, fol
 
     // check if the PDF exists, if not loop through the blobs, get pngs and generate pdf
     const expectedPdfName = `DOC-${folderName}.pdf`; // Construct the expected PDF name
+    const altPdfName = `${folderName}.pdf`;
     const expectedJSONName = `${folderName}.json`;
 
     // check if the PDF exists
     const testBlob = containerClient.listBlobsFlat({ prefix: folderPath + expectedPdfName });
+    const altTestBlob = containerClient.listBlobsFlat({ prefix: folderPath + altPdfName });
     const exists = await testBlob.next();
     pdfExists = exists.value ? true : false;
     if (pdfExists) {
         console.log(`PDF already exists in ${folderPath}. Skipping...`);
+        return;
+    }
+    const altExists = await altTestBlob.next();
+    pdfExists = altExists.value ? true : false;
+    if (pdfExists) {
+        console.log(`PDF already exists in ${folderPath}. Renaming and Skipping...`);
+        // rename the pdf to DOC-
+        const altBlobClient = containerClient.getBlockBlobClient(folderPath + altPdfName);
+        await altBlobClient.rename(folderPath + expectedPdfName);
         return;
     }
 
@@ -165,7 +176,7 @@ async function checkAndGeneratePDF(folderPath: string, containerClient: any, fol
     if (jsonData) {
         console.log(`JSON found...`);
         metadata = JSON.parse(jsonData.toString());
-        const expectedImageName = `${metadata.fileId}-1.png`
+        const expectedImageName = `${metadata.fileId} -1.png`
 
         // check if the first image exists (1+ means its valid)
         const testFirstImage = containerClient.getBlockBlobClient(folderPath + expectedImageName);
@@ -184,11 +195,11 @@ async function checkAndGeneratePDF(folderPath: string, containerClient: any, fol
         if (pngBuffers.length > 0) {
             console.log(`Generating PDF from PNGs...`);
             const pdfBuffer = await new PDFGenerator().generatePDF(folderPath, pngBuffers);
-            const pdfFileName = `${folderPath}${expectedPdfName}`; // Construct PDF file name
+            const pdfFileName = `${folderPath}${expectedPdfName} `; // Construct PDF file name
             // Upload the generated PDF
             const blockBlobClient = containerClient.getBlockBlobClient(pdfFileName);
             await blockBlobClient.upload(pdfBuffer, Buffer.byteLength(pdfBuffer));
-            console.log(`Uploaded PDF: ${pdfFileName}`);
+            console.log(`Uploaded PDF: ${pdfFileName} `);
         } else {
             console.log(`No PNGs found in ${folderPath}. Skipping...`);
         }
@@ -197,7 +208,9 @@ async function checkAndGeneratePDF(folderPath: string, containerClient: any, fol
 async function countDocs(containerClient: any, basePath: string): Promise<number> {
     let documentCount = 0;
     for (let i = 1; i <= 9; i++) {
-        const blobs = containerClient.listBlobsByHierarchy('/', { prefix: `${basePath}${i}/` });
+        const blobs = containerClient.listBlobsByHierarchy('/', {
+            prefix: `${basePath}${i}/`
+        });
         for await (const blob of blobs) {
             console.log(blob.name);
             documentCount++;
