@@ -117,6 +117,18 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Count PDFs",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}/check-and-generate.ts",
+      "args": [
+        "mode=count-pdfs"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "list-extraction-secret-technique",
       "skipFiles": [
         "<node_internals>/**"

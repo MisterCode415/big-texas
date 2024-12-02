@@ -10,6 +10,7 @@ const assetTemplate = `https://reeves.tx.publicsearch.us/files/documents/%intern
 
 const args: any = argv.slice(2).map(arg => arg.split('='));
 const _startFolder = args.find(arg => arg[0] === 'startFolder')?.[1];
+const _runCount = args.find(arg => arg[0] === 'runCount')?.[1];
 const _mode = args.find(arg => arg[0] === 'mode')?.[1];
 const _skipTo = args.find(arg => arg[0] === 'skipTo')?.[1];
 const _startAtBase = args.find(arg => arg[0] === 'startAtBase')?.[1];
@@ -76,12 +77,15 @@ async function downloadFiles(internalId, fileId, count) {
     return fileSet;
 }
 
-async function processFolders(connectionString: string, basePath: string, startAtBase: string = 0, startFolder?: string) {
+async function processFolders(connectionString: string, basePath: string, startAtBase: string = '0', startFolder?: string, runCount?: number) {
     const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
     const containerClient = blobServiceClient.getContainerClient('us-leases'); // Replace with your container name
 
     // Loop through integers from the starting digit to 9
     for (let i = parseInt(startAtBase); i <= 9; i++) {
+        if (runCount && globalCount >= runCount) {
+            return;
+        }
         const dynamicBasePath = `${basePath}${i}/`; // Construct the path for each integer
         await checkSubFolders(dynamicBasePath, containerClient, startFolder);
     }
@@ -99,7 +103,10 @@ async function streamToBuffer(readableStream: NodeJS.ReadableStream | undefined)
     });
 }
 
-async function checkSubFolders(basePath: string, containerClient: any, startFolder?: string) {
+async function checkSubFolders(basePath: string, containerClient: any, startFolder?: string, runCount?: number) {
+    if (runCount && globalCount >= runCount) {
+        return;
+    }
     const blobs = containerClient.listBlobsByHierarchy('/', { prefix: basePath });
     let startProcessing = !startFolder; // Determine if we should start processing immediately
 
@@ -119,6 +126,7 @@ async function checkSubFolders(basePath: string, containerClient: any, startFold
 
             startProcessing = true;
             await checkAndGeneratePDF(folderPath, containerClient, folderName);
+            globalCount++;
         }
     }
 }
@@ -275,7 +283,7 @@ const containerClient = blobServiceClient.getContainerClient('us-leases'); // Re
 async function main(options: Options) {
     switch (options.mode) {
         case 'generate-pdfs':
-            processFolders(connectionString, basePath, options.startAtBase, options.startFolder).catch(console.error);
+            processFolders(connectionString, basePath, options.startAtBase, options.startFolder, options.runCount).catch(console.error);
             break;
         case 'count-docs':
             countDocs(containerClient, basePath).then(count => {
@@ -301,5 +309,11 @@ async function main(options: Options) {
     }
 }
 
-const options = { startFolder: _startFolder || null, mode: _mode, skipTo: _skipTo || null, startFolder: _startFolder || null, startAtBase: _startAtBase || null }
+const options = {
+    mode: _mode,
+    skipTo: _skipTo || null,
+    startFolder: _startFolder || null,
+    startAtBase: _startAtBase || null,
+    runCount: _runCount || null
+}
 main(options).catch(console.error);
